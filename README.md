@@ -9,16 +9,21 @@ python -m pip install -r requirements.txt
 python main.py
 ```
 
-The title screen opens fullscreen. Select **Start Game** or press Enter to pan
-into the intro scene, then press Enter to enter the grove. Press Escape to
-quit; F11 toggles fullscreen from the title screen.
+The title screen opens fullscreen. Select **Start Game** or press Enter to
+read the opening narration and enter the grove. Press Escape to quit; F11
+toggles fullscreen from the title screen.
 
 ## Grove playtest
 
 Use **WASD** or the **arrow keys** to move. The camera follows the player while
-keeping the room in view. Approach the hammer and press **E** to open the lock
-breaking clicker; breaking the lock returns you to the room. Press **E** near
-other people, tools, or places to see their playtest prompts.
+keeping the room in view. The current day is shown in the top-left corner.
+Approach the hammer and press **E** to open the lock-breaking clicker; breaking
+the lock returns you to the room. The locked gate is a solid obstacle inside
+the clearing, with black, white, and red locks and the Fae beside it. Press
+**E** at the gate to hear its sleep narration; the day fades through black and
+advances only after every authored event for that day has been completed.
+Authored interaction events play when their trigger is available; otherwise
+the grove keeps its playtest prompt.
 
 The Grove uses the transparent character and broken-house PNGs in
 `assets_images/` as its player, Elf, Fae, and house art.

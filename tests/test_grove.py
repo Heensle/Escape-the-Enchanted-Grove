@@ -59,6 +59,48 @@ class GroveScreenTests(unittest.TestCase):
         self.assertIsNone(self.grove.update(0))
         self.assertIn("Elf", self.grove._message)
 
+    def test_locked_gate_blocks_movement_and_triggers_sleep_event(self) -> None:
+        gate = self.grove.feature_rects["Gate"]
+        self.grove.player_position.update(
+            gate.centerx,
+            gate.bottom + self.grove.player_radius + 1,
+        )
+        start = self.grove.player_position.copy()
+        self.grove._move(pygame.Vector2(0, -30))
+
+        self.assertEqual(self.grove.player_position, start)
+        self.assertFalse(self.grove._player_rect().colliderect(gate))
+
+        self.grove.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e))
+        self.assertIsNone(self.grove.update(0))
+        self.assertEqual(
+            self.grove.consume_dialogue_trigger(),
+            "scene.fall_asleep",
+        )
+
+    def test_gate_has_visible_black_white_and_red_locks_next_to_fae(self) -> None:
+        center_x = self.grove.gate_sprite.get_width() // 2
+        scale_y = self.grove.gate_sprite.get_height() / self.grove.GATE_SPRITE_SIZE[1]
+        scale_x = self.grove.gate_sprite.get_width() / self.grove.GATE_SPRITE_SIZE[0]
+        lock_colors = ((16, 17, 20), (244, 244, 235), (196, 35, 42))
+        for index, color in enumerate(lock_colors):
+            source_y = (67, 108, 149)[index] + 4
+            point = (
+                center_x - round(7 * scale_x),
+                round(source_y * scale_y),
+            )
+            self.assertEqual(self.grove.gate_sprite.get_at(point)[:3], color)
+
+        fae_x, fae_y = self.grove.character_positions["Fae"]
+        gate = self.grove.feature_rects["Gate"]
+        self.assertGreater(fae_x, gate.right)
+        self.assertLessEqual(fae_x - gate.right, 80)
+        self.assertLessEqual(abs(fae_y - gate.centery), 30)
+        self.assertLess(
+            gate.top,
+            self.grove.world_size[1] // 2,
+        )
+
     def test_camera_tracks_player_and_clamps_at_world_edges(self) -> None:
         self.grove.player_position.update(
             self.grove.forest_bounds.right - self.grove.player_radius,

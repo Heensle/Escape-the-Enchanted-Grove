@@ -227,7 +227,7 @@ class TitleScreen:
             return None
         self.transition_elapsed += delta_seconds
         if self.transition_elapsed >= TRANSITION_SECONDS:
-            return ScreenId.INTRO
+            return ScreenId.INTERACTION
         return None
 
     def draw(self, surface: pygame.Surface) -> None:

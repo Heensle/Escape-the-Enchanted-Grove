@@ -48,6 +48,8 @@ them and only loads entries in `events`.
 ## Day 1 writing status
 
 The opening narration and the narration before sleep are entered as events in
-`day_01.json`. The `writer_notes` array in that file marks where dialogue is
-still needed for the Elf in the house, the Elf at the gate, and the Fae. It
-also records the stage direction for the Elf leaving and the Fae appearing.
+`day_01.json`. The opening narration plays after starting a new game, and the
+sleep narration plays when the player interacts with the gate. The
+`writer_notes` array marks where dialogue is still needed for the Elf in the
+house, the Elf at the gate, and the Fae. It also records the stage direction
+for the Elf leaving and the Fae appearing.

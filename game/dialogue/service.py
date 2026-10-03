@@ -54,6 +54,9 @@ class JsonDialogueService:
             event for event in self._events.values() if event.trigger == trigger
         )
 
+    def get_events_for_day(self, day: int) -> tuple[DialogueEvent, ...]:
+        return tuple(event for event in self._events.values() if event.day == day)
+
     def _load_file(self, path: Path) -> None:
         try:
             with path.open(encoding="utf-8") as file:

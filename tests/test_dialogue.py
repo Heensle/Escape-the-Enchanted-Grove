@@ -46,6 +46,10 @@ class JsonDialogueServiceTests(unittest.TestCase):
     def test_empty_day_files_load_without_events(self) -> None:
         service = JsonDialogueService()
 
+        self.assertEqual(
+            tuple(event.id for event in service.get_events_for_day(1)),
+            ("day_01.scene.intro", "day_01.scene.fall_asleep"),
+        )
         self.assertEqual(service.get_events_for("scene.day_2"), ())
         self.assertEqual(service.get_events_for("scene.day_3"), ())
         self.assertEqual(service.get_events_for("scene.day_4"), ())

@@ -22,16 +22,17 @@ class GroveScreen:
         "fae": (92, 148),
         "broken_house": (150, 300),
     }
+    GATE_SPRITE_SIZE = (220, 190)
 
     FEATURES = (
         ("House", pygame.Rect(205, 150, 335, 245), "The house needs attention."),
         ("Pond", pygame.Rect(1050, 145, 330, 235), "The pond is waiting to be cleaned."),
         ("Garden", pygame.Rect(1040, 675, 360, 175), "A maze of food grows in the garden."),
-        ("Gate", pygame.Rect(710, 850, 180, 55), "The gate leads out of the clearing."),
+        ("Gate", pygame.Rect(690, 105, 220, 190), "The locked gate blocks the way out."),
     )
     CHARACTERS = (
         ("Elf", (635, 345), "The Elf looks like they could use some help."),
-        ("Fae", (950, 365), "The Fae watches you from the path."),
+        ("Fae", (955, 230), "The Fae watches you beside the gate."),
     )
     TOOLS = (
         ("Hammer", (585, 595), "The hammer is ready for the house lock."),
@@ -43,6 +44,8 @@ class GroveScreen:
         self.size = size
         self._pressed_keys: set[int] = set()
         self._pending_screen: ScreenId | None = None
+        self._pending_dialogue_trigger: str | None = None
+        self.day_number = 1
         self._message = "Explore the grove. Approach something and press E."
         self._message_seconds = 0.0
         self._asset_sources = self._load_assets()
@@ -106,6 +109,12 @@ class GroveScreen:
             )
             for name, image in self._asset_sources.items()
         }
+        gate_width = round(self.GATE_SPRITE_SIZE[0] * self.scale_x)
+        gate_height = round(self.GATE_SPRITE_SIZE[1] * self.scale_y)
+        self.gate_sprite = pygame.transform.smoothscale(
+            self._build_gate_sprite(),
+            (gate_width, gate_height),
+        )
         self.solid_rects = [
             self.feature_rects[name] for name in ("House", "Pond", "Garden", "Gate")
         ]
@@ -121,6 +130,58 @@ class GroveScreen:
         self.camera = pygame.Vector2()
         self.background = self._build_background()
         self._update_camera()
+
+    @staticmethod
+    def _build_gate_sprite() -> pygame.Surface:
+        gate = pygame.Surface(GroveScreen.GATE_SPRITE_SIZE, pygame.SRCALPHA)
+        gate_rect = pygame.Rect(24, 32, 172, 150)
+        wood = (105, 65, 39)
+        wood_light = (145, 98, 56)
+        pygame.draw.rect(gate, (54, 43, 31), gate_rect, border_radius=12)
+        pygame.draw.rect(
+            gate,
+            wood,
+            gate_rect.inflate(-10, -8),
+            border_radius=9,
+        )
+        for plank_x in (58, 92, 126, 160):
+            pygame.draw.line(
+                gate,
+                wood_light,
+                (plank_x, 48),
+                (plank_x, 169),
+                4,
+            )
+        for brace_y in (56, 169):
+            pygame.draw.line(
+                gate,
+                (76, 49, 33),
+                (36, brace_y),
+                (184, brace_y),
+                8,
+            )
+        pygame.draw.rect(gate, (74, 49, 34), (14, 172, 192, 13), border_radius=4)
+
+        lock_colors = (
+            (16, 17, 20),
+            (244, 244, 235),
+            (196, 35, 42),
+        )
+        for lock_y, color in zip((67, 108, 149), lock_colors):
+            center_x = GroveScreen.GATE_SPRITE_SIZE[0] // 2
+            pygame.draw.arc(
+                gate,
+                (35, 35, 34),
+                pygame.Rect(center_x - 9, lock_y - 13, 18, 21),
+                0,
+                math.pi,
+                4,
+            )
+            body = pygame.Rect(center_x - 12, lock_y - 2, 24, 23)
+            pygame.draw.rect(gate, (38, 35, 32), body.inflate(4, 4), border_radius=5)
+            pygame.draw.rect(gate, color, body, border_radius=4)
+            pygame.draw.circle(gate, (65, 53, 41), (center_x, lock_y + 7), 3)
+        return gate
 
     def _scale_point(self, point: tuple[int, int]) -> tuple[int, int]:
         return round(point[0] * self.scale_x), round(point[1] * self.scale_y)
@@ -169,7 +230,7 @@ class GroveScreen:
         for path in (
             ((800, 500), (970, 420), (1120, 335)),
             ((800, 500), (990, 635), (1120, 730)),
-            ((800, 500), (800, 720), (800, 865)),
+            ((800, 500), (800, 345), (800, 205)),
             ((800, 500), (680, 575), (585, 595)),
             ((800, 500), (1035, 530), (1115, 555)),
         ):
@@ -254,24 +315,6 @@ class GroveScreen:
                     (x + round(5 * self.scale), y - round(4 * self.scale)),
                     max(2, round(4 * self.scale)),
                 )
-
-        gate = self.feature_rects["Gate"]
-        post_width = max(8, round(20 * self.scale_x))
-        pygame.draw.rect(
-            background,
-            (113, 76, 45),
-            pygame.Rect(gate.left, gate.top, post_width, gate.height),
-        )
-        pygame.draw.rect(
-            background,
-            (113, 76, 45),
-            pygame.Rect(gate.right - post_width, gate.top, post_width, gate.height),
-        )
-        pygame.draw.rect(
-            background,
-            (137, 91, 52),
-            pygame.Rect(gate.left, gate.top, gate.width, max(8, round(18 * self.scale_y))),
-        )
 
     def _draw_forest_edge(self, background: pygame.Surface) -> None:
         rng = random.Random(21)
@@ -388,6 +431,14 @@ class GroveScreen:
             self._set_message("You picked up the net. It will be useful at the pond.")
             return
         self._set_message(description)
+        self._pending_dialogue_trigger = (
+            "scene.fall_asleep" if name == "Gate" else f"interaction.{name.lower()}"
+        )
+
+    def consume_dialogue_trigger(self) -> str | None:
+        trigger = self._pending_dialogue_trigger
+        self._pending_dialogue_trigger = None
+        return trigger
 
     def _nearest_interactable(self) -> tuple[str, str] | None:
         candidates: list[tuple[str, tuple[int, int], str]] = []
@@ -474,6 +525,8 @@ class GroveScreen:
 
     def draw(self, surface: pygame.Surface) -> None:
         surface.blit(self.background, (-round(self.camera.x), -round(self.camera.y)))
+        gate = self.feature_rects["Gate"]
+        surface.blit(self.gate_sprite, self._screen_point(gate.topleft))
         self._draw_tools(surface)
         self._draw_characters(surface)
         self._draw_player(surface)
@@ -560,6 +613,8 @@ class GroveScreen:
         font = pygame.font.Font(None, max(16, round(22 * self.scale)))
         labels = []
         for name, rect in self.feature_rects.items():
+            if name == "Gate":
+                continue
             if name == "House":
                 sprite = self.sprites["broken_house"]
                 label_position = (rect.centerx, rect.bottom - sprite.get_height())
@@ -603,6 +658,14 @@ class GroveScreen:
         padding = max(12, round(min(width, height) * 0.022))
         font = pygame.font.Font(None, max(20, int(min(width, height) * 0.032)))
         hint_font = pygame.font.Font(None, max(17, int(min(width, height) * 0.025)))
+        day_label = font.render(f"DAY {self.day_number}", True, (240, 232, 201))
+        day_panel = pygame.Surface(
+            (day_label.get_width() + padding * 2, day_label.get_height() + padding),
+            pygame.SRCALPHA,
+        )
+        day_panel.fill((20, 35, 27, 218))
+        surface.blit(day_panel, (padding, padding))
+        surface.blit(day_label, (padding * 2, padding + padding // 2))
         panel = pygame.Surface((width - 2 * padding, padding * 3 + font.get_height()), pygame.SRCALPHA)
         panel.fill((20, 35, 27, 218))
         surface.blit(panel, (padding, height - panel.get_height() - padding))

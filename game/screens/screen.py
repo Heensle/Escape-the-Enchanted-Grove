@@ -6,7 +6,6 @@ import pygame
 
 class ScreenId(Enum):
     TITLE = auto()
-    INTRO = auto()
     GROVE = auto()
     INTERACTION = auto()
     LOCK_BREAK = auto()
