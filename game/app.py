@@ -5,9 +5,10 @@ import pygame
 from game.screens.epilogue import EpilogueScreen
 from game.screens.interaction import InteractionScreen
 from game.screens.intro import IntroScreen
-from game.screens.room import RoomScreen
+from game.screens.grove import GroveScreen
 from game.screens.screen import ScreenId, ScreenView
 from game.screens.title import TITLE, TitleScreen
+from game.minigames.lock_break_clicker import LockBreakClicker
 
 
 class GameApp:
@@ -24,11 +25,13 @@ class GameApp:
     def _create_screens(self) -> None:
         size = self.surface.get_size()
         self.title_screen = TitleScreen(size)
+        self.lock_break_screen = LockBreakClicker(size)
         self.screens = {
             ScreenId.TITLE: self.title_screen,
             ScreenId.INTRO: IntroScreen(size),
-            ScreenId.ROOM: RoomScreen(size),
+            ScreenId.GROVE: GroveScreen(size),
             ScreenId.INTERACTION: InteractionScreen(size),
+            ScreenId.LOCK_BREAK: self.lock_break_screen,
             ScreenId.EPILOGUE: EpilogueScreen(size),
         }
 
@@ -65,6 +68,8 @@ class GameApp:
         if destination is not None:
             if destination is ScreenId.TITLE:
                 self.title_screen.reset()
+            elif destination is ScreenId.LOCK_BREAK:
+                self.lock_break_screen.reset()
             self.current_screen_id = destination
 
     def draw(self) -> None:
