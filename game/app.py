@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import pygame
 
+from game.dialogue.gemini import GeminiDialogueService
+from game.dialogue.relationships import RelationshipStore
 from game.dialogue.service import JsonDialogueService
 from game.minigames.lock_break_clicker import LockBreakClicker
 from game.screens.epilogue import EpilogueScreen
@@ -20,6 +22,8 @@ class GameApp:
         pygame.display.set_caption(TITLE)
         self.clock = pygame.time.Clock()
         self.dialogue_service = JsonDialogueService()
+        self.gemini_service = GeminiDialogueService()
+        self.relationship_store = RelationshipStore()
         self.day_number = 1
         self.screens: dict[ScreenId, ScreenView] = {}
         self._create_screens()
@@ -61,6 +65,12 @@ class GameApp:
             self.running = False
             return
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            if (
+                self.current_screen_id is ScreenId.INTERACTION
+                and self.interaction_screen.is_conversation
+            ):
+                self.interaction_screen.handle_event(event)
+                return
             self.running = False
             return
         if (
@@ -93,6 +103,16 @@ class GameApp:
                     and event.id not in self._completed_event_ids
                 )
                 if not events:
+                    character = self._conversation_character_for_trigger(trigger)
+                    if character is not None:
+                        self.interaction_screen.start_conversation(
+                            character=character,
+                            relationship_score=self.relationship_store.score(character),
+                            submit_turn=self.gemini_service.submit_turn,
+                            apply_relationship_delta=self.relationship_store.apply_delta,
+                            destination=ScreenId.GROVE,
+                        )
+                        self.current_screen_id = ScreenId.INTERACTION
                     return
                 self.interaction_screen.start(events, ScreenId.GROVE)
                 self.current_screen_id = ScreenId.INTERACTION
@@ -129,6 +149,14 @@ class GameApp:
         elif destination is ScreenId.LOCK_BREAK:
             self.lock_break_screen.reset()
         self.current_screen_id = destination
+
+    @staticmethod
+    def _conversation_character_for_trigger(trigger: str) -> str | None:
+        characters = {
+            "interaction.elf": "elf",
+            "interaction.fae": "fae",
+        }
+        return characters.get(trigger)
 
     def draw(self) -> None:
         self.current_screen.draw(self.surface)
@@ -189,4 +217,5 @@ class GameApp:
                 self.update(delta_seconds)
                 self.draw()
         finally:
+            self.gemini_service.close()
             pygame.quit()
