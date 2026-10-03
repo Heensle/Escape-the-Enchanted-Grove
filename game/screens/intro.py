@@ -7,5 +7,5 @@ class IntroScreen(PlaceholderScreen):
         super().__init__(
             size,
             "Intro scene is not built yet",
-            ScreenId.ROOM,
+            ScreenId.GROVE,
         )
