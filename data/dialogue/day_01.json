@@ -1,0 +1,30 @@
+{
+  "day": 1,
+  "writer_notes": [
+    "IN HOUSE: Add the Elf's spoken dialogue after the adventurer lands on the cottage and the Elf sees the destroyed ceiling.",
+    "GATE BACKGROUND: Add the Elf's spoken dialogue at the gate.",
+    "AFTER THE ELF LEAVES: Stage direction: the Elf leaves and the Fae appears before the adventurer. Then add the Fae's spoken dialogue."
+  ],
+  "events": [
+    {
+      "id": "day_01.scene.intro",
+      "trigger": "scene.intro",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "You are a lone adventurer that was traveling to the Capital to make some money. Unfortunately, you’ve strayed from the main path and ended up completely lost. Even worse, when you were walking through the forest, you got captured by a giant snake. Luckily, it loses interest in you after realizing that you were human, but it still throws you away, sending you off flying. You eventually land on top of a small cottage. You’re alive and well, but the house’s ceiling is completely destroyed and in front of you is a very angry looking elf."
+        }
+      ]
+    },
+    {
+      "id": "day_01.scene.fall_asleep",
+      "trigger": "scene.fall_asleep",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "You’ve had a long day of dealing with mythical creatures. There’s so much to deal with, but you’re too tired to think about it. You set up your sleeping bag and quickly nod off to sleep."
+        }
+      ]
+    }
+  ]
+}

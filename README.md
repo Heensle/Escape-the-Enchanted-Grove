@@ -20,6 +20,9 @@ keeping the room in view. Approach the hammer and press **E** to open the lock
 breaking clicker; breaking the lock returns you to the room. Press **E** near
 other people, tools, or places to see their playtest prompts.
 
+The Grove uses the transparent character and broken-house PNGs in
+`assets_images/` as its player, Elf, Fae, and house art.
+
 ## Title-screen artwork
 
 Place a 2D background image at `assets/images/title_background.png` to replace
@@ -37,10 +40,27 @@ from the image so they remain readable and scale independently.
 - `game/tasks/` contains the house, pond, and garden task briefs and
   the result contract.
 - `game/minigames/` contains self-contained minigames. The lock-break clicker
-  is registered as `ScreenId.LOCK_BREAK` and returns to the interaction screen
+  is registered as `ScreenId.LOCK_BREAK` and returns to the grove
   when completed.
-- `game/dialogue/` isolates character dialogue behind a service interface.
+- `game/dialogue/` contains the dialogue loading code; do not add authored
+  dialogue here.
+- `data/dialogue/` contains writer-authored dialogue files, one JSON file per
+  day, with instructions in `data/dialogue/README.md`.
 - `game/ui/` contains reusable presentation widgets.
+
+## Writing dialogue
+
+Add a `day_NN.json` file under `data/dialogue/`. Give every event a unique
+`id`, a `trigger`, and an ordered `lines` list containing exact `speaker` and
+`text` values. Use a `scene.*` trigger for mandatory scenes and an
+`interaction.*` trigger for player interactions; trigger names are labels, so
+game code can request events the same way for either kind.
+
+The game loads all day files through `JsonDialogueService` and can retrieve an
+event by ID with `get_event("day_01.scene.intro")`, or retrieve all events
+for a trigger with `get_events_for("interaction.elf")`. A speaker named
+`narrator` can be used for exposition. Keep IDs unique across all days so
+content can be referenced reliably as the story grows.
 
 To reduce merge conflicts, work primarily within the module for your feature.
 Coordinate edits to `game/state.py`, `game/story.py`, `game/app.py`, and shared

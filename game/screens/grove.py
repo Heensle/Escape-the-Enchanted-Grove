@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import random
+from pathlib import Path
 
 import pygame
 
@@ -15,6 +16,12 @@ class GroveScreen:
     PLAYER_SPEED = 300
     FOREST_BORDER = 105
     INTERACTION_RADIUS = 82
+    SPRITE_SIZES = {
+        "player": (92, 122),
+        "elf": (78, 140),
+        "fae": (92, 148),
+        "broken_house": (150, 300),
+    }
 
     FEATURES = (
         ("House", pygame.Rect(205, 150, 335, 245), "The house needs attention."),
@@ -38,7 +45,26 @@ class GroveScreen:
         self._pending_screen: ScreenId | None = None
         self._message = "Explore the grove. Approach something and press E."
         self._message_seconds = 0.0
+        self._asset_sources = self._load_assets()
         self._setup_world((0.5, 0.5))
+
+    @staticmethod
+    def _load_assets() -> dict[str, pygame.Surface]:
+        asset_directory = Path(__file__).resolve().parents[2] / "assets_images"
+        filenames = {
+            "player": "Main character.png",
+            "elf": "Elf.png",
+            "fae": "TheFae.png",
+            "broken_house": "TheBrokenHouse.png",
+        }
+        assets: dict[str, pygame.Surface] = {}
+        for name, filename in filenames.items():
+            image = pygame.image.load(str(asset_directory / filename))
+            bounds = image.get_bounding_rect(min_alpha=8)
+            if bounds.width == 0 or bounds.height == 0:
+                raise ValueError(f"Image asset has no visible pixels: {filename}")
+            assets[name] = image.subsurface(bounds).copy()
+        return assets
 
     def _setup_world(self, player_fraction: tuple[float, float]) -> None:
         width, height = self.size
@@ -70,6 +96,16 @@ class GroveScreen:
         )
         self.player_radius = max(12, round(17 * self.scale))
         self.player_speed = self.PLAYER_SPEED * self.scale
+        self.sprites = {
+            name: pygame.transform.smoothscale(
+                image,
+                (
+                    max(1, round(self.SPRITE_SIZES[name][0] * self.scale)),
+                    max(1, round(self.SPRITE_SIZES[name][1] * self.scale)),
+                ),
+            )
+            for name, image in self._asset_sources.items()
+        }
         self.solid_rects = [
             self.feature_rects[name] for name in ("House", "Pond", "Garden", "Gate")
         ]
@@ -160,53 +196,11 @@ class GroveScreen:
             (72, 89, 53),
             house.inflate(round(50 * self.scale_x), round(42 * self.scale_y)),
         )
-        roof_points = [
-            (house.left - round(13 * self.scale_x), house.top + round(72 * self.scale_y)),
-            (house.centerx, house.top - round(25 * self.scale_y)),
-            (house.right + round(13 * self.scale_x), house.top + round(72 * self.scale_y)),
-        ]
-        pygame.draw.polygon(background, (102, 59, 47), roof_points)
-        pygame.draw.polygon(
-            background,
-            (156, 91, 62),
-            [
-                (house.left + round(12 * self.scale_x), house.top + round(70 * self.scale_y)),
-                (house.centerx, house.top + round(5 * self.scale_y)),
-                (house.right - round(12 * self.scale_x), house.top + round(70 * self.scale_y)),
-            ],
+        house_sprite = self.sprites["broken_house"]
+        background.blit(
+            house_sprite,
+            (house.centerx - house_sprite.get_width() // 2, house.bottom - house_sprite.get_height()),
         )
-        pygame.draw.rect(
-            background,
-            (197, 166, 113),
-            house,
-            border_radius=max(5, round(15 * self.scale)),
-        )
-        pygame.draw.rect(
-            background,
-            (125, 80, 51),
-            pygame.Rect(
-                house.centerx - round(23 * self.scale_x),
-                house.bottom - round(88 * self.scale_y),
-                round(46 * self.scale_x),
-                round(88 * self.scale_y),
-            ),
-            border_radius=max(4, round(8 * self.scale)),
-        )
-        for x_fraction in (0.19, 0.73):
-            window = pygame.Rect(
-                house.left + round(house.width * x_fraction),
-                house.top + round(107 * self.scale_y),
-                round(49 * self.scale_x),
-                round(44 * self.scale_y),
-            )
-            pygame.draw.rect(background, (94, 147, 147), window, border_radius=4)
-            pygame.draw.line(
-                background,
-                (231, 211, 157),
-                window.midtop,
-                window.midbottom,
-                max(2, round(4 * self.scale)),
-            )
 
         pond = self.feature_rects["Pond"]
         pygame.draw.ellipse(
@@ -532,101 +526,65 @@ class GroveScreen:
     def _draw_characters(self, surface: pygame.Surface) -> None:
         for name, position in self.character_positions.items():
             x, y = self._screen_point(position)
-            tint = (212, 190, 139) if name == "Elf" else (176, 163, 202)
+            sprite = self.sprites["elf" if name == "Elf" else "fae"]
             pygame.draw.ellipse(
                 surface,
                 (75, 82, 55),
                 pygame.Rect(
-                    x - round(18 * self.scale),
-                    y + round(10 * self.scale),
-                    round(36 * self.scale),
-                    round(12 * self.scale),
+                    x - round(22 * self.scale),
+                    y + round(20 * self.scale),
+                    round(44 * self.scale),
+                    round(14 * self.scale),
                 ),
             )
-            pygame.draw.ellipse(
-                surface,
-                tint,
-                pygame.Rect(
-                    x - round(13 * self.scale),
-                    y - round(15 * self.scale),
-                    round(26 * self.scale),
-                    round(30 * self.scale),
-                ),
-            )
-            pygame.draw.circle(
-                surface,
-                (228, 195, 153),
-                (x, y - round(19 * self.scale)),
-                max(5, round(9 * self.scale)),
-            )
-            ear_offset = round(13 * self.scale)
-            pygame.draw.polygon(
-                surface,
-                tint,
-                [
-                    (x - ear_offset, y - round(20 * self.scale)),
-                    (x - round(22 * self.scale), y - round(31 * self.scale)),
-                    (x - round(12 * self.scale), y - round(14 * self.scale)),
-                ],
-            )
-            pygame.draw.polygon(
-                surface,
-                tint,
-                [
-                    (x + ear_offset, y - round(20 * self.scale)),
-                    (x + round(22 * self.scale), y - round(31 * self.scale)),
-                    (x + round(12 * self.scale), y - round(14 * self.scale)),
-                ],
-            )
+            surface.blit(sprite, sprite.get_rect(midbottom=(x, y + round(20 * self.scale))))
 
     def _draw_player(self, surface: pygame.Surface) -> None:
         x, y = self._screen_point(
             (round(self.player_position.x), round(self.player_position.y))
         )
+        sprite = self.sprites["player"]
         pygame.draw.ellipse(
             surface,
             (53, 68, 45),
             pygame.Rect(
-                x - self.player_radius,
-                y + self.player_radius // 2,
-                self.player_radius * 2,
-                max(5, self.player_radius // 2),
+                x - round(24 * self.scale),
+                y + round(16 * self.scale),
+                round(48 * self.scale),
+                max(5, round(14 * self.scale)),
             ),
         )
-        pygame.draw.circle(surface, (73, 112, 132), (x, y), self.player_radius)
-        pygame.draw.circle(
-            surface,
-            (229, 193, 148),
-            (x, y - self.player_radius // 2),
-            max(5, self.player_radius * 2 // 3),
-        )
-        pygame.draw.arc(
-            surface,
-            (93, 68, 49),
-            pygame.Rect(
-                x - self.player_radius,
-                y - self.player_radius,
-                self.player_radius * 2,
-                self.player_radius,
-            ),
-            math.pi,
-            2 * math.pi,
-            max(3, self.player_radius // 3),
-        )
+        surface.blit(sprite, sprite.get_rect(midbottom=(x, y + round(20 * self.scale))))
 
     def _draw_world_labels(self, surface: pygame.Surface) -> None:
         font = pygame.font.Font(None, max(16, round(22 * self.scale)))
-        labels = [
-            (name, self._screen_point(rect.midtop), -round(15 * self.scale))
-            for name, rect in self.feature_rects.items()
-        ]
+        labels = []
+        for name, rect in self.feature_rects.items():
+            if name == "House":
+                sprite = self.sprites["broken_house"]
+                label_position = (rect.centerx, rect.bottom - sprite.get_height())
+            else:
+                label_position = rect.midtop
+            labels.append(
+                (
+                    name,
+                    self._screen_point(label_position),
+                    -round(8 * self.scale if name == "House" else 15 * self.scale),
+                )
+            )
         labels.extend(
             (
                 name,
-                self._screen_point(position),
-                -round(35 * self.scale),
+                self._screen_point(
+                    (position[0], position[1] - self.sprites["elf" if name == "Elf" else "fae"].get_height())
+                ),
+                -round(8 * self.scale),
             )
-            for name, position in (*self.character_positions.items(), *self.tool_positions.items())
+            for name, position in self.character_positions.items()
+        )
+        labels.extend(
+            (name, self._screen_point(position), -round(35 * self.scale))
+            for name, position in self.tool_positions.items()
         )
         for text, point, y_offset in labels:
             label = font.render(text, True, (243, 234, 204))

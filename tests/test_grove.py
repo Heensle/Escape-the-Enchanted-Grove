@@ -83,6 +83,14 @@ class GroveScreenTests(unittest.TestCase):
         self.assertEqual(self.grove.size, (1024, 768))
         self.assertEqual(surface.get_size(), (1024, 768))
 
+    def test_uploaded_art_is_loaded_and_scaled_for_grove(self) -> None:
+        self.assertEqual(
+            set(self.grove.sprites),
+            {"player", "elf", "fae", "broken_house"},
+        )
+        self.assertEqual(self.grove.sprites["player"].get_size(), (92, 122))
+        self.assertEqual(self.grove.sprites["broken_house"].get_size(), (150, 300))
+
 
 if __name__ == "__main__":
     unittest.main()
