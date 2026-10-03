@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+from game.state import MAX_DAYS
+
 
 @dataclass(frozen=True)
 class DialogueLine:
@@ -70,6 +72,10 @@ class JsonDialogueService:
         raw_events = data.get("events")
         if not isinstance(day, int) or isinstance(day, bool) or day < 1:
             raise ValueError(f"Dialogue file needs a positive integer 'day': {path}")
+        if day > MAX_DAYS:
+            raise ValueError(
+                f"Dialogue file day must be between 1 and {MAX_DAYS}: {path}"
+            )
         if not isinstance(raw_events, list):
             raise ValueError(f"Dialogue file needs an 'events' list: {path}")
 

@@ -9,6 +9,9 @@ class ScreenId(Enum):
     GROVE = auto()
     INTERACTION = auto()
     LOCK_BREAK = auto()
+    TASK_CHOICES = auto()
+    TASK_ACTIVITY = auto()
+    JIGSAW = auto()
     EPILOGUE = auto()
 
 

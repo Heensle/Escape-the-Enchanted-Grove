@@ -7,6 +7,7 @@ from game.app import GameApp
 from game.dialogue.service import DialogueEvent, DialogueLine, JsonDialogueService
 from game.screens.interaction import InteractionScreen
 from game.screens.screen import ScreenId
+from game.state import MAX_DAYS
 
 
 class _OneShotScreen:
@@ -21,14 +22,24 @@ class _OneShotScreen:
 
 
 class _GroveRequestScreen(_OneShotScreen):
-    def __init__(self, trigger: str) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.trigger = trigger
+        self.day_number = 1
+        self.sleep_requested = False
 
     def consume_dialogue_trigger(self) -> str | None:
-        trigger = self.trigger
-        self.trigger = ""
-        return trigger or None
+        return None
+
+    def consume_sleep_request(self) -> bool:
+        requested = self.sleep_requested
+        self.sleep_requested = False
+        return requested
+
+    def consume_task_target(self) -> str | None:
+        return None
+
+    def begin_day(self, day_number: int) -> None:
+        self.day_number = day_number
 
 
 class DayFlowTests(unittest.TestCase):
@@ -65,12 +76,18 @@ class DayFlowTests(unittest.TestCase):
         app = GameApp.__new__(GameApp)
         app.current_screen_id = ScreenId.INTERACTION
         app.day_number = 1
-        app.grove_screen = SimpleNamespace(day_number=1)
+        app.grove_screen = SimpleNamespace(
+            day_number=1,
+            begin_day=lambda day_number: setattr(
+                app.grove_screen, "day_number", day_number
+            ),
+        )
         app._completed_event_ids = set()
         app._fade_destination = None
         app._fade_elapsed = 0.0
         app._fade_alpha = 0
         app._fade_phase = None
+        app._interaction_character = None
 
         app._start_day_fade(ScreenId.GROVE)
         app._update_day_fade(app.DAY_FADE_SECONDS)
@@ -87,9 +104,31 @@ class DayFlowTests(unittest.TestCase):
         self.assertIsNone(app._fade_phase)
         self.assertEqual(app._completed_event_ids, set())
 
-    def test_day_one_events_are_connected_to_start_and_gate(self) -> None:
+    def test_finishing_day_four_ends_the_story_without_starting_day_five(self) -> None:
+        app = GameApp.__new__(GameApp)
+        app.current_screen_id = ScreenId.INTERACTION
+        app.day_number = MAX_DAYS
+        app.grove_screen = SimpleNamespace(
+            begin_day=lambda day_number: self.fail(
+                f"Should not begin day {day_number} after the finale"
+            )
+        )
+        app._completed_event_ids = {"day_04.scene.fall_asleep"}
+        app._fade_destination = None
+        app._fade_elapsed = 0.0
+        app._fade_alpha = 0
+        app._fade_phase = None
+
+        app._start_day_fade(ScreenId.GROVE)
+        app._update_day_fade(app.DAY_FADE_SECONDS)
+
+        self.assertIs(app.current_screen_id, ScreenId.EPILOGUE)
+        self.assertEqual(app.day_number, MAX_DAYS)
+        self.assertEqual(app._completed_event_ids, set())
+
+    def test_day_one_sleep_dialogue_requires_bedroll_confirmation(self) -> None:
         title = _OneShotScreen(ScreenId.INTERACTION)
-        grove = _GroveRequestScreen("scene.fall_asleep")
+        grove = _GroveRequestScreen()
         dialogue = InteractionScreen((800, 600))
         app = GameApp.__new__(GameApp)
         app.screens = {
@@ -104,6 +143,8 @@ class DayFlowTests(unittest.TestCase):
         app.current_screen_id = ScreenId.TITLE
         app.day_number = 1
         app._completed_event_ids = set()
+        app._sleep_after_dialogue = False
+        app._interaction_character = None
         app._fade_destination = None
         app._fade_elapsed = 0.0
         app._fade_alpha = 0
@@ -118,6 +159,7 @@ class DayFlowTests(unittest.TestCase):
         self.assertEqual(app._completed_event_ids, {"day_01.scene.intro"})
         self.assertIsNone(app._fade_phase)
 
+        grove.sleep_requested = True
         app.update(0)
         self.assertEqual(dialogue._events[0].id, "day_01.scene.fall_asleep")
 

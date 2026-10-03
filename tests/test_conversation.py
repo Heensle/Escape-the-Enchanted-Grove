@@ -401,6 +401,9 @@ class ConversationRoutingTests(unittest.TestCase):
                     self.trigger = ""
                     return trigger or None
 
+                def mark_character_talked(self, _character: str) -> None:
+                    pass
+
             class DialogueData:
                 def get_events_for(self, _trigger: str) -> tuple[object, ...]:
                     return ()

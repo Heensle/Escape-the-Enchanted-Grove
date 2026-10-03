@@ -6,8 +6,6 @@ Add or edit the JSON file for the relevant day here:
 - `day_02.json` — Day 2 dialogue
 - `day_03.json` — Day 3 dialogue
 - `day_04.json` — Day 4 dialogue
-- `day_05.json` — Day 5 dialogue
-- Continue the same `day_NN.json` naming pattern if the story adds more days.
 
 Do not add dialogue text to the Python files in `game/dialogue/`. Those files
 load and provide the authored dialogue to the game.
@@ -49,7 +47,7 @@ them and only loads entries in `events`.
 
 The opening narration and the narration before sleep are entered as events in
 `day_01.json`. The opening narration plays after starting a new game, and the
-sleep narration plays when the player interacts with the gate. The
+sleep narration plays after the player confirms sleep at the bedroll box. The
 `writer_notes` array marks where dialogue is still needed for the Elf in the
 house, the Elf at the gate, and the Fae. It also records the stage direction
 for the Elf leaving and the Fae appearing.

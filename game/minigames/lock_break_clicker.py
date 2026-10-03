@@ -37,6 +37,9 @@ class LockBreakClicker:
         self._pending_screen = None
 
     def handle_event(self, event: pygame.event.Event) -> None:
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self._pending_screen = ScreenId.GROVE
+            return
         if (
             self.completed
             or event.type != pygame.MOUSEBUTTONDOWN
@@ -62,13 +65,13 @@ class LockBreakClicker:
 
         title_font = pygame.font.Font(None, max(32, int(min(width, height) * 0.075)))
         text_font = pygame.font.Font(None, max(20, int(min(width, height) * 0.035)))
-        title = title_font.render("Break the lock", True, (238, 226, 190))
+        title = title_font.render("Break the gate lock", True, (238, 226, 190))
         surface.blit(title, title.get_rect(center=(width // 2, int(height * 0.16))))
 
         instruction_text = (
             "The lock is broken!"
             if self.completed
-            else "Click the lock with your hammer"
+            else "Click the gate lock with your hammer"
         )
         instruction = text_font.render(instruction_text, True, (182, 199, 171))
         surface.blit(

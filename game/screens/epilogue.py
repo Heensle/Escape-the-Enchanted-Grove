@@ -6,6 +6,6 @@ class EpilogueScreen(PlaceholderScreen):
     def __init__(self, size: tuple[int, int]) -> None:
         super().__init__(
             size,
-            "Epilogue is not built yet",
+            "The four days in the Enchanted Grove are complete",
             ScreenId.TITLE,
         )

@@ -53,7 +53,15 @@ class JsonDialogueServiceTests(unittest.TestCase):
         self.assertEqual(service.get_events_for("scene.day_2"), ())
         self.assertEqual(service.get_events_for("scene.day_3"), ())
         self.assertEqual(service.get_events_for("scene.day_4"), ())
-        self.assertEqual(service.get_events_for("scene.day_5"), ())
+        self.assertEqual(
+            {event.day for day in range(1, 5) for event in service.get_events_for_day(day)},
+            {1},
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            content_dir = Path(directory)
+            self._write_day(content_dir / "day_05.json", 5, [])
+            with self.assertRaisesRegex(ValueError, "between 1 and 4"):
+                JsonDialogueService(content_dir)
 
     def test_retrieves_all_events_for_a_trigger_in_file_order(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

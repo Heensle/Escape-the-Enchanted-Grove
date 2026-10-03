@@ -25,7 +25,9 @@ class InteractionScreen:
         self._destination: ScreenId | None = None
         self._pending_screen: ScreenId | None = None
         self._completed_event_ids: tuple[str, ...] = ()
+        self._completed_conversation_character: str | None = None
         self._conversation_character: str | None = None
+        self._conversation_has_spoken = False
         self._relationship_score = 0
         self._submit_turn: (
             Callable[
@@ -60,7 +62,9 @@ class InteractionScreen:
         self._destination = destination
         self._pending_screen = None
         self._completed_event_ids = ()
+        self._completed_conversation_character = None
         self._conversation_character = None
+        self._conversation_has_spoken = False
         self._future = None
         self._close_requested = False
         self._input_text = ""
@@ -99,7 +103,9 @@ class InteractionScreen:
         self._destination = destination
         self._pending_screen = None
         self._completed_event_ids = ()
+        self._completed_conversation_character = None
         self._conversation_character = character.title()
+        self._conversation_has_spoken = False
         self._relationship_score = relationship_score
         self._submit_turn = submit_turn
         self._apply_relationship_delta = apply_relationship_delta
@@ -146,6 +152,7 @@ class InteractionScreen:
             raise RuntimeError("Conversation is not configured.")
         previous_messages = tuple(self._history[-12:])
         self._history.append(("You", message))
+        self._conversation_has_spoken = True
         self._input_text = ""
         self._status = "Waiting for Gemini..."
         try:
@@ -177,6 +184,10 @@ class InteractionScreen:
     def _close_conversation(self) -> None:
         if self._conversation_character is None or self._future is not None:
             return
+        if self._conversation_has_spoken:
+            self._completed_conversation_character = (
+                self._conversation_character.lower()
+            )
         pygame.key.stop_text_input()
         self._pending_screen = self._destination
         self._destination = None
@@ -199,6 +210,11 @@ class InteractionScreen:
         completed_event_ids = self._completed_event_ids
         self._completed_event_ids = ()
         return completed_event_ids
+
+    def consume_completed_conversation_character(self) -> str | None:
+        character = self._completed_conversation_character
+        self._completed_conversation_character = None
+        return character
 
     def update(self, _delta_seconds: float) -> ScreenId | None:
         _ = _delta_seconds

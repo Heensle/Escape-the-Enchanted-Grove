@@ -17,11 +17,24 @@ toggles fullscreen from the title screen.
 
 Use **WASD** or the **arrow keys** to move. The camera follows the player while
 keeping the room in view. The current day is shown in the top-left corner.
-Approach the hammer and press **E** to open the lock-breaking clicker; breaking
-the lock returns you to the room. The locked gate is a solid obstacle inside
-the clearing, with black, white, and red locks and the Fae beside it. Press
-**E** at the gate to hear its sleep narration; the day fades through black and
-advances only after every authored event for that day has been completed.
+Approach the Elf and the Fae and press **E** to talk. The task list beside the
+day count tracks both conversations and reveals their daily requests. Tasks
+remain visibly locked until you have talked to both characters that day.
+Interact with the day's object (the hammer on day 2, net on day 3, or garden on
+day 4) to choose an available task. The roof-repair choice opens the jigsaw
+task scaffold, ready for puzzle mechanics to be added; the other unfinished
+tasks open their own task placeholders. The gate remains a solid obstacle and
+does nothing when interacted with.
+
+To end any day, complete every item in the task list, approach the bedroll box
+beside the house, press **E**, then click **Sleep** to confirm. Day 1 requires
+both conversations; days 2 and 3 also require both assigned tasks; day 4
+requires the garden maze and is the final day. After sleeping on day 4, the
+story ends at the epilogue; there is no fifth day. Until the actual jigsaw,
+pond, and maze mechanics are
+implemented, their task screens expose an explicit temporary completion
+button. On days 2 and 3, choosing one of the two tasks for the hammer or net
+locks out the other path; the unchosen request is marked **FAILED**.
 Authored interaction events play when their trigger is available. When no
 interaction event is authored, speaking to the Elf or Fae opens a Gemini chat.
 
@@ -70,11 +83,11 @@ from the image so they remain readable and scale independently.
   `game/screens/screen.py`.
 - `game/state.py` defines shared story data; `game/story.py` owns choice and
   ending rules.
-- `game/tasks/` contains the house, pond, and garden task briefs and
-  the result contract.
+- `game/tasks/` contains the daily task catalog, house/pond/garden briefs,
+  and the task result contract.
 - `game/minigames/` contains self-contained minigames. The lock-break clicker
-  is registered as `ScreenId.LOCK_BREAK` and returns to the grove
-  when completed.
+  is registered as `ScreenId.LOCK_BREAK`; `game/screens/task_choices.py`
+  contains the daily option gate and the roof jigsaw scaffold.
 - `game/dialogue/` contains the authored-dialogue loader and Gemini client; do
   not add authored dialogue here.
 - `data/dialogue/` contains writer-authored dialogue files, one JSON file per

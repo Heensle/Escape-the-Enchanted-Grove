@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pygame
 
-from game.screens.screen import ScreenId
+from game.state import MAX_DAYS
+from game.tasks.daily import get_task, tasks_for_day
 
 
 class GroveScreen:
@@ -37,14 +38,24 @@ class GroveScreen:
     TOOLS = (
         ("Hammer", (585, 595), "The hammer is ready for the house lock."),
         ("Net", (1115, 555), "The net can help with things in the pond."),
+        ("Sleep", (570, 450), "A bedroll box beside the house is ready for the night."),
     )
 
     def __init__(self, size: tuple[int, int]) -> None:
         pygame.font.init()
         self.size = size
         self._pressed_keys: set[int] = set()
-        self._pending_screen: ScreenId | None = None
         self._pending_dialogue_trigger: str | None = None
+        self._pending_task_target: str | None = None
+        self._pending_sleep_request = False
+        self._sleep_confirmation = False
+        self._sleep_blocked_message = ""
+        self._sleep_yes_rect = pygame.Rect(0, 0, 0, 0)
+        self._sleep_no_rect = pygame.Rect(0, 0, 0, 0)
+        self._talked_today: set[str] = set()
+        self._completed_tasks: set[str] = set()
+        self._chosen_tasks: dict[str, str] = {}
+        self._failed_tasks: set[str] = set()
         self.day_number = 1
         self._message = "Explore the grove. Approach something and press E."
         self._message_seconds = 0.0
@@ -417,28 +428,144 @@ class GroveScreen:
                 self.player_position = candidate
 
     def _interact(self) -> None:
+        if self._sleep_confirmation:
+            return
         target = self._nearest_interactable()
         if target is None:
             self._set_message("There is nothing close enough to interact with.")
             return
 
         name, description = target
+        if name == "Gate":
+            return
         if name == "Hammer":
-            self._pressed_keys.clear()
-            self._pending_screen = ScreenId.LOCK_BREAK
+            if self.day_number == 2:
+                self._pending_task_target = "hammer"
+            else:
+                self._set_message("The hammer is not needed for today's tasks.")
             return
         if name == "Net":
-            self._set_message("You picked up the net. It will be useful at the pond.")
+            if self.day_number == 3:
+                self._pending_task_target = "net"
+            else:
+                self._set_message("The net is not needed for today's tasks.")
+            return
+        if name == "Garden":
+            if self.day_number == 4:
+                self._pending_task_target = "garden"
+            else:
+                self._set_message("The garden maze is not today's task.")
+            return
+        if name == "Sleep":
+            self._sleep_confirmation = True
             return
         self._set_message(description)
-        self._pending_dialogue_trigger = (
-            "scene.fall_asleep" if name == "Gate" else f"interaction.{name.lower()}"
-        )
+        self._pending_dialogue_trigger = f"interaction.{name.lower()}"
 
     def consume_dialogue_trigger(self) -> str | None:
         trigger = self._pending_dialogue_trigger
         self._pending_dialogue_trigger = None
         return trigger
+
+    def consume_task_target(self) -> str | None:
+        target = self._pending_task_target
+        self._pending_task_target = None
+        return target
+
+    def consume_sleep_request(self) -> bool:
+        requested = self._pending_sleep_request
+        self._pending_sleep_request = False
+        return requested
+
+    def mark_character_talked(self, character: str) -> None:
+        normalized = character.strip().lower()
+        if normalized not in ("elf", "fae"):
+            raise ValueError(f"Unsupported grove character: {character!r}")
+        self._talked_today.add(normalized)
+
+    def begin_day(self, day_number: int) -> None:
+        if not 1 <= day_number <= MAX_DAYS:
+            raise ValueError(f"Day must be between 1 and {MAX_DAYS}.")
+        self.day_number = day_number
+        self._talked_today.clear()
+        self._completed_tasks.clear()
+        self._chosen_tasks.clear()
+        self._failed_tasks.clear()
+        self._sleep_confirmation = False
+        self._sleep_blocked_message = ""
+        self._pending_sleep_request = False
+
+    @property
+    def both_characters_talked(self) -> bool:
+        return self._talked_today >= {"elf", "fae"}
+
+    @property
+    def completed_tasks(self) -> frozenset[str]:
+        return frozenset(self._completed_tasks)
+
+    @property
+    def failed_tasks(self) -> frozenset[str]:
+        return frozenset(self._failed_tasks)
+
+    @property
+    def chosen_tasks(self) -> frozenset[str]:
+        return frozenset(self._chosen_tasks.values())
+
+    @property
+    def all_daily_tasks_complete(self) -> bool:
+        tasks = tasks_for_day(self.day_number)
+        task_ids = {task.id for task in tasks}
+        resolved_tasks = self._completed_tasks | self._failed_tasks
+        target_ids = {task.target for task in tasks}
+        choices_made = target_ids <= self._chosen_tasks.keys()
+        return (
+            self.both_characters_talked
+            and task_ids <= resolved_tasks
+            and choices_made
+        )
+
+    def choose_task(self, task_id: str) -> None:
+        task = get_task(task_id)
+        if task.day != self.day_number:
+            raise ValueError(
+                f"Task {task_id!r} is not available on day {self.day_number}."
+            )
+        if not self.both_characters_talked:
+            raise ValueError("Both characters must be talked to before tasks unlock.")
+        if task_id in self._failed_tasks:
+            raise ValueError(f"Task {task_id!r} has already failed.")
+        if task_id in self._completed_tasks:
+            raise ValueError(f"Task {task_id!r} is already complete.")
+
+        chosen_task = self._chosen_tasks.get(task.target)
+        if chosen_task is not None and chosen_task != task_id:
+            raise ValueError(
+                f"Task {task_id!r} cannot be chosen after {chosen_task!r}."
+            )
+        self._chosen_tasks[task.target] = task_id
+        self._failed_tasks.update(
+            sibling.id
+            for sibling in tasks_for_day(self.day_number)
+            if sibling.target == task.target and sibling.id != task_id
+        )
+
+    def complete_task(self, task_id: str) -> None:
+        task = get_task(task_id)
+        if task.day != self.day_number:
+            raise ValueError(
+                f"Task {task_id!r} is not available on day {self.day_number}."
+            )
+        if not self.both_characters_talked:
+            raise ValueError("Both characters must be talked to before tasks unlock.")
+        if self._chosen_tasks.get(task.target) != task_id:
+            raise ValueError(f"Task {task_id!r} has not been chosen.")
+        if task_id in self._completed_tasks:
+            raise ValueError(f"Task {task_id!r} is already complete.")
+        self._completed_tasks.add(task_id)
+
+    @property
+    def sleep_confirmation_open(self) -> bool:
+        return self._sleep_confirmation
 
     def _nearest_interactable(self) -> tuple[str, str] | None:
         candidates: list[tuple[str, tuple[int, int], str]] = []
@@ -475,6 +602,20 @@ class GroveScreen:
         self._message = message
         self._message_seconds = 4.0
 
+    def _confirm_sleep(self) -> None:
+        if not self.both_characters_talked:
+            self._sleep_blocked_message = "Talk to both the Elf and Fae before sleeping."
+            return
+        if not self.all_daily_tasks_complete:
+            self._sleep_blocked_message = "Complete all of today's tasks before sleeping."
+            return
+        self._pending_sleep_request = True
+        self._sleep_confirmation = False
+        self._sleep_blocked_message = ""
+
+    def show_message(self, message: str) -> None:
+        self._set_message(message)
+
     def _update_camera(self) -> None:
         width, height = self.size
         self.camera.x = min(
@@ -487,6 +628,21 @@ class GroveScreen:
         )
 
     def handle_event(self, event: pygame.event.Event) -> None:
+        if self._sleep_confirmation:
+            if event.type == pygame.KEYDOWN:
+                if event.key in (pygame.K_y, pygame.K_RETURN):
+                    self._confirm_sleep()
+                elif event.key in (pygame.K_n, pygame.K_ESCAPE):
+                    self._sleep_confirmation = False
+            elif (
+                event.type == pygame.MOUSEBUTTONDOWN
+                and event.button == pygame.BUTTON_LEFT
+            ):
+                if self._sleep_yes_rect.collidepoint(event.pos):
+                    self._confirm_sleep()
+                elif self._sleep_no_rect.collidepoint(event.pos):
+                    self._sleep_confirmation = False
+            return
         if event.type == pygame.KEYDOWN:
             self._pressed_keys.add(event.key)
             if event.key in (pygame.K_e, pygame.K_RETURN):
@@ -494,8 +650,11 @@ class GroveScreen:
         elif event.type == pygame.KEYUP:
             self._pressed_keys.discard(event.key)
 
-    def update(self, delta_seconds: float) -> ScreenId | None:
+    def update(self, delta_seconds: float) -> None:
         delta_seconds = min(max(delta_seconds, 0), 0.1)
+        if self._sleep_confirmation:
+            self._update_camera()
+            return
         direction = pygame.Vector2(
             int(pygame.K_RIGHT in self._pressed_keys or pygame.K_d in self._pressed_keys)
             - int(pygame.K_LEFT in self._pressed_keys or pygame.K_a in self._pressed_keys),
@@ -510,9 +669,6 @@ class GroveScreen:
             if self._message_seconds == 0:
                 self._message = "Explore the grove. Approach something and press E."
         self._update_camera()
-        destination = self._pending_screen
-        self._pending_screen = None
-        return destination
 
     def resize(self, size: tuple[int, int]) -> None:
         old_world_size = self.world_size
@@ -532,6 +688,8 @@ class GroveScreen:
         self._draw_player(surface)
         self._draw_world_labels(surface)
         self._draw_hud(surface)
+        if self._sleep_confirmation:
+            self._draw_sleep_confirmation(surface)
 
     def _screen_point(self, point: tuple[int, int]) -> tuple[int, int]:
         return round(point[0] - self.camera.x), round(point[1] - self.camera.y)
@@ -574,6 +732,28 @@ class GroveScreen:
                 round(22 * self.scale),
             ),
             width=max(2, round(3 * self.scale)),
+        )
+        sleep_x, sleep_y = self._screen_point(self.tool_positions["Sleep"])
+        sleep_box = pygame.Rect(
+            sleep_x - round(19 * self.scale),
+            sleep_y - round(13 * self.scale),
+            round(38 * self.scale),
+            round(26 * self.scale),
+        )
+        pygame.draw.rect(surface, (111, 78, 48), sleep_box, border_radius=4)
+        pygame.draw.rect(
+            surface,
+            (190, 151, 91),
+            sleep_box,
+            width=max(2, round(3 * self.scale)),
+            border_radius=4,
+        )
+        pygame.draw.line(
+            surface,
+            (190, 151, 91),
+            (sleep_box.left + sleep_box.width // 2, sleep_box.top + 2),
+            (sleep_box.left + sleep_box.width // 2, sleep_box.bottom - 2),
+            max(1, round(2 * self.scale)),
         )
 
     def _draw_characters(self, surface: pygame.Surface) -> None:
@@ -666,6 +846,15 @@ class GroveScreen:
         day_panel.fill((20, 35, 27, 218))
         surface.blit(day_panel, (padding, padding))
         surface.blit(day_label, (padding * 2, padding + padding // 2))
+        self._draw_task_list(
+            surface,
+            padding,
+            padding,
+            day_panel.get_width(),
+            day_panel.get_height(),
+            font,
+            hint_font,
+        )
         panel = pygame.Surface((width - 2 * padding, padding * 3 + font.get_height()), pygame.SRCALPHA)
         panel.fill((20, 35, 27, 218))
         surface.blit(panel, (padding, height - panel.get_height() - padding))
@@ -683,4 +872,136 @@ class GroveScreen:
             surface.blit(
                 prompt,
                 prompt.get_rect(center=(width // 2, height - panel.get_height() - padding)),
+            )
+
+    def _daily_task_rows(self) -> tuple[tuple[str, bool, bool], ...]:
+        rows: list[tuple[str, bool, bool]] = [
+            ("Talk to the Elf", "elf" in self._talked_today, True),
+            ("Talk to the Fae", "fae" in self._talked_today, True),
+        ]
+        unlocked = self.both_characters_talked
+        for task in tasks_for_day(self.day_number):
+            if task.giver is None and not unlocked:
+                continue
+            if task.giver is not None and task.giver not in self._talked_today:
+                continue
+            complete = task.id in self._completed_tasks
+            failed = task.id in self._failed_tasks
+            available = (
+                unlocked
+                and not complete
+                and not failed
+                and (
+                    task.target not in self._chosen_tasks
+                    or self._chosen_tasks[task.target] == task.id
+                )
+            )
+            if failed:
+                label = f"{task.label} — FAILED"
+            else:
+                label = task.label
+            rows.append((label, complete, available))
+        return tuple(rows)
+
+    def _draw_task_list(
+        self,
+        surface: pygame.Surface,
+        padding: int,
+        day_top: int,
+        day_width: int,
+        day_height: int,
+        title_font: pygame.font.Font,
+        row_font: pygame.font.Font,
+    ) -> None:
+        width, _ = surface.get_size()
+        panel_width = min(round(width * 0.52), 680)
+        x = padding + day_width + padding
+        y = day_top
+        if x + panel_width > width - padding:
+            x = padding
+            y += day_height + padding // 2
+            panel_width = width - 2 * padding
+
+        rows = self._daily_task_rows()
+        row_height = max(24, row_font.get_height() + 5)
+        panel_height = padding + title_font.get_height() + len(rows) * row_height + padding // 2
+        panel = pygame.Surface((panel_width, panel_height), pygame.SRCALPHA)
+        panel.fill((20, 35, 27, 218))
+        surface.blit(panel, (x, y))
+        heading = row_font.render("TODAY'S TASKS", True, (239, 221, 165))
+        surface.blit(heading, (x + padding // 2, y + padding // 3))
+        row_y = y + padding // 3 + row_font.get_height() + 3
+        for label, complete, available in rows:
+            failed = label.endswith(" — FAILED")
+            color = (
+                (150, 205, 147)
+                if complete
+                else (196, 125, 115)
+                if failed
+                else (230, 227, 208)
+                if available
+                else (133, 141, 132)
+            )
+            status = (
+                "[x]"
+                if complete
+                else "[FAILED]"
+                if failed
+                else "[ ]"
+                if available
+                else "[locked]"
+            )
+            text = row_font.render(f"{status} {label}", True, color)
+            surface.blit(text, (x + padding // 2, row_y))
+            row_y += row_height
+
+    def _draw_sleep_confirmation(self, surface: pygame.Surface) -> None:
+        width, height = surface.get_size()
+        panel = pygame.Rect(width // 2 - 230, height // 2 - 105, 460, 210)
+        overlay = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        surface.blit(overlay, (0, 0))
+        pygame.draw.rect(surface, (30, 48, 39), panel, border_radius=16)
+        pygame.draw.rect(surface, (193, 181, 133), panel, 3, border_radius=16)
+        font = pygame.font.Font(None, max(24, int(min(self.size) * 0.045)))
+        hint_font = pygame.font.Font(None, max(19, int(min(self.size) * 0.032)))
+        title = font.render("Go to sleep for the night?", True, (240, 232, 201))
+        surface.blit(title, title.get_rect(center=(panel.centerx, panel.top + 54)))
+        button_width = 150
+        button_height = 54
+        self._sleep_yes_rect = pygame.Rect(
+            panel.centerx - button_width - 12,
+            panel.top + 112,
+            button_width,
+            button_height,
+        )
+        self._sleep_no_rect = pygame.Rect(
+            panel.centerx + 12,
+            panel.top + 112,
+            button_width,
+            button_height,
+        )
+        can_sleep = self.all_daily_tasks_complete
+        for rect, label, enabled in (
+            (self._sleep_yes_rect, "Sleep", can_sleep),
+            (self._sleep_no_rect, "Stay up", True),
+        ):
+            fill = (53, 75, 57) if enabled else (47, 53, 49)
+            border = (196, 179, 122) if enabled else (91, 99, 91)
+            foreground = (239, 233, 204) if enabled else (139, 145, 137)
+            pygame.draw.rect(surface, fill, rect, border_radius=9)
+            pygame.draw.rect(surface, border, rect, 2, border_radius=9)
+            text = hint_font.render(label, True, foreground)
+            surface.blit(text, text.get_rect(center=rect.center))
+        if not can_sleep:
+            default_message = (
+                "Talk to both the Elf and Fae before sleeping."
+                if not self.both_characters_talked
+                else "Complete all of today's tasks before sleeping."
+            )
+            message = self._sleep_blocked_message or default_message
+            warning = hint_font.render(message, True, (215, 164, 126))
+            surface.blit(
+                warning,
+                warning.get_rect(center=(panel.centerx, panel.bottom - 18)),
             )

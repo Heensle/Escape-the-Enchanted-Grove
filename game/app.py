@@ -10,7 +10,10 @@ from game.screens.epilogue import EpilogueScreen
 from game.screens.interaction import InteractionScreen
 from game.screens.grove import GroveScreen
 from game.screens.screen import ScreenId, ScreenView
+from game.screens.task_choices import JigsawScreen, TaskActivityScreen, TaskChoicesScreen
 from game.screens.title import TITLE, TitleScreen
+from game.state import MAX_DAYS
+from game.tasks.daily import get_task, tasks_for_target
 
 
 class GameApp:
@@ -30,6 +33,8 @@ class GameApp:
         self.current_screen_id = ScreenId.TITLE
         self.running = True
         self._completed_event_ids: set[str] = set()
+        self._sleep_after_dialogue = False
+        self._interaction_character: str | None = None
         self._fade_phase: str | None = None
         self._fade_elapsed = 0.0
         self._fade_alpha = 0
@@ -41,11 +46,17 @@ class GameApp:
         self.lock_break_screen = LockBreakClicker(size)
         self.grove_screen = GroveScreen(size)
         self.interaction_screen = InteractionScreen(size)
+        self.task_choices_screen = TaskChoicesScreen(size)
+        self.task_activity_screen = TaskActivityScreen(size)
+        self.jigsaw_screen = JigsawScreen(size)
         self.screens = {
             ScreenId.TITLE: self.title_screen,
             ScreenId.GROVE: self.grove_screen,
             ScreenId.INTERACTION: self.interaction_screen,
             ScreenId.LOCK_BREAK: self.lock_break_screen,
+            ScreenId.TASK_CHOICES: self.task_choices_screen,
+            ScreenId.TASK_ACTIVITY: self.task_activity_screen,
+            ScreenId.JIGSAW: self.jigsaw_screen,
             ScreenId.EPILOGUE: EpilogueScreen(size),
         }
 
@@ -70,6 +81,17 @@ class GameApp:
                 and self.interaction_screen.is_conversation
             ):
                 self.interaction_screen.handle_event(event)
+                return
+            if self.current_screen_id in (
+                ScreenId.TASK_CHOICES,
+                ScreenId.TASK_ACTIVITY,
+                ScreenId.JIGSAW,
+                ScreenId.LOCK_BREAK,
+            ) or (
+                self.current_screen_id is ScreenId.GROVE
+                and self.grove_screen.sleep_confirmation_open
+            ):
+                self.current_screen.handle_event(event)
                 return
             self.running = False
             return
@@ -96,6 +118,7 @@ class GameApp:
         if previous_screen_id is ScreenId.GROVE:
             trigger = self.grove_screen.consume_dialogue_trigger()
             if trigger is not None:
+                character = self._conversation_character_for_trigger(trigger)
                 events = tuple(
                     event
                     for event in self.dialogue_service.get_events_for(trigger)
@@ -103,8 +126,8 @@ class GameApp:
                     and event.id not in self._completed_event_ids
                 )
                 if not events:
-                    character = self._conversation_character_for_trigger(trigger)
                     if character is not None:
+                        self._interaction_character = character
                         self.interaction_screen.start_conversation(
                             character=character,
                             relationship_score=self.relationship_store.score(character),
@@ -114,8 +137,16 @@ class GameApp:
                         )
                         self.current_screen_id = ScreenId.INTERACTION
                     return
+                self._interaction_character = character
                 self.interaction_screen.start(events, ScreenId.GROVE)
                 self.current_screen_id = ScreenId.INTERACTION
+                return
+            if self.grove_screen.consume_sleep_request():
+                self._begin_sleep()
+                return
+            task_target = self.grove_screen.consume_task_target()
+            if task_target is not None:
+                self._start_task_choices(task_target)
                 return
 
         if destination is None:
@@ -132,23 +163,122 @@ class GameApp:
             previous_screen_id is ScreenId.INTERACTION
             and destination is ScreenId.GROVE
         ):
-            self._completed_event_ids.update(
-                self.interaction_screen.consume_completed_event_ids()
+            completed_event_ids = self.interaction_screen.consume_completed_event_ids()
+            self._completed_event_ids.update(completed_event_ids)
+            completed_character = (
+                self.interaction_screen.consume_completed_conversation_character()
             )
-            day_events = self.dialogue_service.get_events_for_day(self.day_number)
-            if day_events and all(
-                event.id in self._completed_event_ids for event in day_events
-            ):
+            if self._interaction_character is not None:
+                if (
+                    completed_event_ids
+                    or completed_character == self._interaction_character
+                ):
+                    self.grove_screen.mark_character_talked(
+                        self._interaction_character
+                    )
+                self._interaction_character = None
+            if self._sleep_after_dialogue:
+                self._sleep_after_dialogue = False
                 self._start_day_fade(destination)
                 return
             self.current_screen_id = destination
+            return
+
+        if (
+            previous_screen_id is ScreenId.TASK_CHOICES
+            and destination is ScreenId.GROVE
+        ):
+            self.current_screen_id = ScreenId.GROVE
+            selected_option = self.task_choices_screen.consume_selected_option()
+            if selected_option is not None:
+                self._start_selected_task(selected_option)
             return
 
         if destination is ScreenId.TITLE:
             self.title_screen.reset()
         elif destination is ScreenId.LOCK_BREAK:
             self.lock_break_screen.reset()
+        elif destination is ScreenId.GROVE and previous_screen_id in (
+            ScreenId.TASK_ACTIVITY,
+            ScreenId.JIGSAW,
+        ):
+            task_screen = (
+                self.task_activity_screen
+                if previous_screen_id is ScreenId.TASK_ACTIVITY
+                else self.jigsaw_screen
+            )
+            completed_task_id = task_screen.consume_completed_task_id()
+            if completed_task_id is not None:
+                self.grove_screen.complete_task(completed_task_id)
+                self.grove_screen.show_message(
+                    f"Completed: {get_task(completed_task_id).label}."
+                )
+            else:
+                self.grove_screen.show_message("You left the task unfinished.")
+        elif (
+            destination is ScreenId.GROVE
+            and previous_screen_id is ScreenId.LOCK_BREAK
+            and self.lock_break_screen.completed
+        ):
+            self.grove_screen.complete_task("break_gate_lock")
+            self.grove_screen.show_message("You broke the gate lock.")
         self.current_screen_id = destination
+
+    def _begin_sleep(self) -> None:
+        sleep_events = tuple(
+            event
+            for event in self.dialogue_service.get_events_for("scene.fall_asleep")
+            if event.day == self.day_number
+            and event.id not in self._completed_event_ids
+        )
+        if sleep_events:
+            self.interaction_screen.start(sleep_events, ScreenId.GROVE)
+            self._sleep_after_dialogue = True
+            self.current_screen_id = ScreenId.INTERACTION
+            return
+        self._start_day_fade(ScreenId.GROVE)
+
+    def _start_task_choices(self, target: str) -> None:
+        titles = {
+            "hammer": "Choose how to use the hammer",
+            "net": "Choose how to use the net",
+            "garden": "The garden maze",
+        }
+        options = tasks_for_target(self.day_number, target)
+        if not options:
+            raise ValueError(
+                f"No day {self.day_number} tasks are associated with {target!r}."
+            )
+        try:
+            title = titles[target]
+        except KeyError:
+            raise ValueError(f"Unknown task target: {target!r}") from None
+        self.task_choices_screen.start(
+            title,
+            options,
+            unlocked=self.grove_screen.both_characters_talked,
+            completed_options=self.grove_screen.completed_tasks,
+            failed_options=self.grove_screen.failed_tasks,
+            chosen_options=self.grove_screen.chosen_tasks,
+        )
+        self.current_screen_id = ScreenId.TASK_CHOICES
+
+    def _start_selected_task(self, task_id: str) -> None:
+        task = get_task(task_id)
+        self.grove_screen.choose_task(task_id)
+        if task_id == "repair_roof":
+            self.jigsaw_screen.start(task.id, task.choice_title, task.description)
+            self.current_screen_id = ScreenId.JIGSAW
+        elif task_id == "break_gate_lock":
+            self.lock_break_screen.reset()
+            self.current_screen_id = ScreenId.LOCK_BREAK
+        else:
+            self.task_activity_screen.start(
+                task.id,
+                task.choice_title,
+                task.description,
+            )
+            self.current_screen_id = ScreenId.TASK_ACTIVITY
 
     @staticmethod
     def _conversation_character_for_trigger(trigger: str) -> str | None:
@@ -194,9 +324,12 @@ class GameApp:
             if progress == 1:
                 if self._fade_destination is None:
                     raise RuntimeError("Day fade has no destination screen.")
-                self.current_screen_id = self._fade_destination
-                self.day_number += 1
-                self.grove_screen.day_number = self.day_number
+                if self.day_number >= MAX_DAYS:
+                    self.current_screen_id = ScreenId.EPILOGUE
+                else:
+                    self.current_screen_id = self._fade_destination
+                    self.day_number += 1
+                    self.grove_screen.begin_day(self.day_number)
                 self._completed_event_ids.clear()
                 self._fade_phase = "in"
                 self._fade_elapsed = 0.0
