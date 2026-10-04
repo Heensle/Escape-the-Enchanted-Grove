@@ -3,9 +3,12 @@ from __future__ import annotations
 import pygame
 
 from game.dialogue.gemini import GeminiDialogueService
-from game.dialogue.relationships import RelationshipStore
+from game.dialogue.relationships import TASK_SCORE_CHANGE, RelationshipStore
 from game.dialogue.service import JsonDialogueService
+from game.minigames.garden_maze import GardenMaze
 from game.minigames.lock_break_clicker import LockBreakClicker
+from game.minigames.pond_cleanup import PondCleanup
+from game.minigames.key_retrieval_clicker import KeyRetrievalClicker
 from game.screens.epilogue import EpilogueScreen
 from game.screens.interaction import InteractionScreen
 from game.screens.grove import GroveScreen
@@ -13,7 +16,9 @@ from game.screens.screen import ScreenId, ScreenView
 from game.screens.task_choices import JigsawScreen, TaskActivityScreen, TaskChoicesScreen
 from game.screens.title import TITLE, TitleScreen
 from game.state import MAX_DAYS
+from game.state import GardenEnding, HouseAction, Location, PondAction
 from game.tasks.daily import get_task, tasks_for_target
+from game.tasks.results import TaskOutcome, TaskResult
 
 
 class GameApp:
@@ -52,6 +57,9 @@ class GameApp:
         self.task_choices_screen = TaskChoicesScreen(size)
         self.task_activity_screen = TaskActivityScreen(size)
         self.jigsaw_screen = JigsawScreen(size)
+        self.pond_cleanup_screen = PondCleanup(size)
+        self.key_retrieval_screen = KeyRetrievalClicker(size)
+        self.garden_maze_screen = GardenMaze(size)
         self.screens = {
             ScreenId.TITLE: self.title_screen,
             ScreenId.GROVE: self.grove_screen,
@@ -60,6 +68,9 @@ class GameApp:
             ScreenId.TASK_CHOICES: self.task_choices_screen,
             ScreenId.TASK_ACTIVITY: self.task_activity_screen,
             ScreenId.JIGSAW: self.jigsaw_screen,
+            ScreenId.CLEAN_POND: self.pond_cleanup_screen,
+            ScreenId.PULL_KEY: self.key_retrieval_screen,
+            ScreenId.GARDEN_MAZE: self.garden_maze_screen,
             ScreenId.EPILOGUE: EpilogueScreen(size),
         }
 
@@ -92,7 +103,10 @@ class GameApp:
                 ScreenId.TASK_CHOICES,
                 ScreenId.TASK_ACTIVITY,
                 ScreenId.JIGSAW,
+                ScreenId.CLEAN_POND,
+                ScreenId.PULL_KEY,
                 ScreenId.LOCK_BREAK,
+                ScreenId.GARDEN_MAZE,
             ) or (
                 self.current_screen_id is ScreenId.GROVE
                 and self.grove_screen.sleep_confirmation_open
@@ -205,30 +219,75 @@ class GameApp:
             self.title_screen.reset()
         elif destination is ScreenId.LOCK_BREAK:
             self.lock_break_screen.reset()
+        elif destination is ScreenId.PULL_KEY:
+            self.key_retrieval_screen.reset()
         elif destination is ScreenId.GROVE and previous_screen_id in (
             ScreenId.TASK_ACTIVITY,
             ScreenId.JIGSAW,
+            ScreenId.CLEAN_POND,
+            ScreenId.PULL_KEY,
+            ScreenId.GARDEN_MAZE,
         ):
-            task_screen = (
-                self.task_activity_screen
-                if previous_screen_id is ScreenId.TASK_ACTIVITY
-                else self.jigsaw_screen
-            )
+            if previous_screen_id is ScreenId.TASK_ACTIVITY:
+                task_screen = self.task_activity_screen
+            elif previous_screen_id is ScreenId.JIGSAW:
+                task_screen = self.jigsaw_screen
+            elif previous_screen_id is ScreenId.CLEAN_POND:
+                task_screen = self.pond_cleanup_screen
+            elif previous_screen_id is ScreenId.GARDEN_MAZE:
+                task_screen = self.garden_maze_screen
+            else:
+                task_screen = self.key_retrieval_screen
             completed_task_id = task_screen.consume_completed_task_id()
+            garden_ending = (
+                task_screen.consume_garden_ending()
+                if previous_screen_id is ScreenId.GARDEN_MAZE
+                else None
+            )
             if completed_task_id is not None:
                 self.grove_screen.complete_task(completed_task_id)
+                relationship_message = self._record_task_relationship(
+                    completed_task_id,
+                    TaskOutcome.COMPLETED,
+                    garden_ending,
+                )
                 self.grove_screen.show_message(
-                    f"Completed: {get_task(completed_task_id).label}."
+                    f"Completed: {get_task(completed_task_id).label}. "
+                    f"{relationship_message}"
                 )
             else:
-                self.grove_screen.show_message("You left the task unfinished.")
+                task_id = self._task_id_for_screen(previous_screen_id)
+                if task_id is not None:
+                    relationship_message = self._record_task_relationship(
+                        task_id,
+                        TaskOutcome.CANCELLED,
+                    )
+                    self.grove_screen.show_message(
+                        f"You left the task unfinished. {relationship_message}"
+                    )
+                else:
+                    self.grove_screen.show_message("You left the task unfinished.")
         elif (
             destination is ScreenId.GROVE
             and previous_screen_id is ScreenId.LOCK_BREAK
-            and self.lock_break_screen.completed
         ):
-            self.grove_screen.complete_task("break_gate_lock")
-            self.grove_screen.show_message("You broke the gate lock.")
+            if self.lock_break_screen.completed:
+                self.grove_screen.complete_task("break_gate_lock")
+                relationship_message = self._record_task_relationship(
+                    "break_gate_lock",
+                    TaskOutcome.COMPLETED,
+                )
+                self.grove_screen.show_message(
+                    f"You broke the gate lock. {relationship_message}"
+                )
+            else:
+                relationship_message = self._record_task_relationship(
+                    "break_gate_lock",
+                    TaskOutcome.CANCELLED,
+                )
+                self.grove_screen.show_message(
+                    f"You left the task unfinished. {relationship_message}"
+                )
         self.current_screen_id = destination
 
     def _begin_sleep(self) -> None:
@@ -276,9 +335,26 @@ class GameApp:
         if task_id == "repair_roof":
             self.jigsaw_screen.start(task.id, task.choice_title, task.description)
             self.current_screen_id = ScreenId.JIGSAW
+        elif task_id == "clean_pond":
+            self.pond_cleanup_screen.start(
+                task.id,
+                task.choice_title,
+                task.description,
+            )
+            self.current_screen_id = ScreenId.CLEAN_POND
         elif task_id == "break_gate_lock":
             self.lock_break_screen.reset()
             self.current_screen_id = ScreenId.LOCK_BREAK
+        elif task_id == "retrieve_key":
+            self.key_retrieval_screen.reset()
+            self.current_screen_id = ScreenId.PULL_KEY
+        elif task_id == "garden_maze":
+            self.garden_maze_screen.start(
+                task.id,
+                task.choice_title,
+                task.description,
+            )
+            self.current_screen_id = ScreenId.GARDEN_MAZE
         else:
             self.task_activity_screen.start(
                 task.id,
@@ -286,6 +362,52 @@ class GameApp:
                 task.description,
             )
             self.current_screen_id = ScreenId.TASK_ACTIVITY
+
+    @staticmethod
+    def _task_id_for_screen(screen_id: ScreenId) -> str | None:
+        return {
+            ScreenId.TASK_ACTIVITY: "garden_maze",
+            ScreenId.JIGSAW: "repair_roof",
+            ScreenId.CLEAN_POND: "clean_pond",
+            ScreenId.PULL_KEY: "retrieve_key",
+            ScreenId.GARDEN_MAZE: "garden_maze",
+        }.get(screen_id)
+
+    def _record_task_relationship(
+        self,
+        task_id: str,
+        outcome: TaskOutcome,
+        garden_ending: GardenEnding | None = None,
+    ) -> str:
+        task = get_task(task_id)
+        actions = {
+            "repair_roof": (Location.HOUSE, HouseAction.REPAIR_ROOF),
+            "break_gate_lock": (Location.HOUSE, HouseAction.BREAK_LOCK),
+            "clean_pond": (Location.POND, PondAction.CLEAN_POND_AND_SORT_WASTE),
+            "retrieve_key": (Location.POND, PondAction.RETRIEVE_KEY),
+        }
+        if task_id == "garden_maze":
+            if outcome is not TaskOutcome.COMPLETED:
+                return ""
+            if garden_ending is None:
+                raise ValueError("A completed garden maze must report its exit.")
+            location, action = Location.GARDEN, garden_ending
+            character = garden_ending.name.lower()
+        else:
+            if task.giver is None:
+                return ""
+            try:
+                location, action = actions[task_id]
+            except KeyError:
+                raise ValueError(
+                    f"Task {task_id!r} has no relationship outcome mapping."
+                ) from None
+            character = task.giver
+        score = self.relationship_store.record_task_result(
+            TaskResult(location=location, outcome=outcome, action=action)
+        )
+        delta = TASK_SCORE_CHANGE if outcome is TaskOutcome.COMPLETED else -TASK_SCORE_CHANGE
+        return f"{character.title()} relationship {delta:+d} (now {score})."
 
     @staticmethod
     def _conversation_character_for_trigger(trigger: str) -> str | None:

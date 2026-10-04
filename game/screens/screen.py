@@ -12,6 +12,9 @@ class ScreenId(Enum):
     TASK_CHOICES = auto()
     TASK_ACTIVITY = auto()
     JIGSAW = auto()
+    CLEAN_POND = auto()
+    PULL_KEY = auto()
+    GARDEN_MAZE = auto()
     EPILOGUE = auto()
 
 
