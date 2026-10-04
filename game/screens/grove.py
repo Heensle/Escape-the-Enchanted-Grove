@@ -68,11 +68,11 @@ class GroveScreen:
     def _load_assets() -> dict[str, pygame.Surface]:
         asset_directory = Path(__file__).resolve().parents[2] / "assets_images"
         filenames = {
-            "player": "Main character.png",
+            "player": "TheMainCharacter.png",
             "elf": "Elf.png",
             "fae": "TheFae.png",
-            "house": "HouseofElf.png",
-            "broken_house": "TheBrokenHouse.png",
+            "house": "Elf_House.png",
+            "broken_house": "Broken_House.png",
         }
         assets: dict[str, pygame.Surface] = {}
         for name, filename in filenames.items():

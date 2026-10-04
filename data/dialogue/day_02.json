@@ -1,4 +1,145 @@
 {
   "day": 2,
-  "events": []
+  "events": [
+    {
+      "id": "day_02.scene.elf_dialogue_1",
+      "trigger": "interaction.elf",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "You find the elf waiting beneath the shade of an old tree. He looks toward you and gives a small nod."
+        }
+      ]
+    },
+    {
+      "id": "day_02.scene.elf_dialogue_2",
+      "trigger": "interaction.elf",
+      "lines": [
+        {
+          "speaker": "elf",
+          "text": "Ah, you’ve returned. Good. I trust you’re ready to begin. Your first task should be simple enough. You damaged the roof of my home yesterday, and now you will repair it. You’ll find a hammer near the house; take it and use it to fix the broken sections of the roof."
+        }
+      ]
+    },
+    {
+      "id": "day_02.scene.elf_dialogue_3",
+      "trigger": "interaction.elf",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "He looks toward the grove with a faint sigh."
+        }
+      ]
+    },
+    {
+      "id": "day_02.scene.elf_dialogue_4",
+      "trigger": "interaction.elf",
+      "lines": [
+        {
+          "speaker": "elf",
+          "text": "It may seem like a small task, but restoring this grove begins with repairing what has been neglected. I have other matters to attend to today, so I shall be busy."
+        }
+      ]
+    },
+    {
+      "id": "day_02.scene.elf_dialogue_5",
+      "trigger": "interaction.elf",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "He folds his arms and gives you a stern, expectant look, as though making certain you understand the importance of your task."
+        }
+      ]
+    },
+    {
+      "id": "day_02.scene.elf_dialogue_6",
+      "trigger": "interaction.elf",
+      "lines": [
+        {
+          "speaker": "elf",
+          "text": "There is no need to report back to me when you are finished; I will inspect the roof myself and determine whether you have completed the task properly. However, if the roof is still unfinished by the end of the day, you are to come and speak with me. Do not make me remind you twice."
+        }
+      ]
+    },
+    {
+      "id": "day_02.scene.fae_dialogue_1",
+      "trigger": "interaction.fae",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "The next morning, you find the fae waiting for you among the trees, a smile spreading across her face as you approach."
+        }
+      ]
+    },
+    {
+      "id": "day_02.scene.fae_dialogue_2",
+      "trigger": "interaction.fae",
+      "lines": [
+        {
+          "speaker": "fae",
+          "text": "There you are! I was beginning to wonder if you’d forgotten about me."
+        }
+      ]
+    },
+    {
+      "id": "day_02.scene.fae_dialogue_3",
+      "trigger": "interaction.fae",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "She glances toward the distant gate and lowers her voice."
+        }
+      ]
+    },
+    {
+      "id": "day_02.scene.fae_dialogue_4",
+      "trigger": "interaction.fae",
+      "lines": [
+        {
+          "speaker": "fae",
+          "text": "I’ve been thinking about our little escape, and unfortunately, there’s a slight complication. The three locks on the gate are each made from a different material, so we can’t simply smash them all at once. Wouldn’t that have made things easier?"
+        }
+      ]
+    },
+    {
+      "id": "day_02.scene.fae_dialogue_5",
+      "trigger": "interaction.fae",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "She sighs, then quickly brightens."
+        }
+      ]
+    },
+    {
+      "id": "day_02.scene.fae_dialogue_6",
+      "trigger": "interaction.fae",
+      "lines": [
+        {
+          "speaker": "fae",
+          "text": "But don’t worry. We can still do this, one lock at a time. For the first one, you’ll need a hammer. Find one and use it to destroy the first lock. Once it’s broken, we’ll be one step closer to getting out of here."
+        }
+      ]
+    },
+    {
+      "id": "day_02.scene.fae_dialogue_7",
+      "trigger": "interaction.fae",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "She gives you an encouraging smile."
+        }
+      ]
+    },
+    {
+      "id": "day_02.scene.fae_dialogue_8",
+      "trigger": "interaction.fae",
+      "lines": [
+        {
+          "speaker": "fae",
+          "text": "See? I told you I could help you. Now, go on-break that first lock for me. If you can’t get it done by the end of the day, come back and speak with me. Now, go on. We’re one step closer to getting out of here."
+        }
+      ]
+    }
+  ]
 }

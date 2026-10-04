@@ -1,4 +1,125 @@
 {
   "day": 3,
-  "events": []
+  "events": [
+    {
+      "id": "day_03.scene.elf_dialogue_1",
+      "trigger": "interaction.elf",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "You find the elf waiting, he turns to you as you approach and gives a slight nod."
+        }
+      ]
+    },
+    {
+      "id": "day_03.scene.elf_dialogue_2",
+      "trigger": "interaction.elf",
+      "lines": [
+        {
+          "speaker": "elf",
+          "text": "Ah, there you are. I have another task for you today. There’s a pond in the grove that requires some attention. I want you to clean the pond and sort the rubbish surrounding it. There is some rubble there from the damage you caused to my roof, but most of it is simply pollution that has accumulated over time."
+        }
+      ]
+    },
+    {
+      "id": "day_03.scene.elf_dialogue_3",
+      "trigger": "interaction.elf",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "He sighs, his expression becoming more solemn."
+        }
+      ]
+    },
+    {
+      "id": "day_03.scene.elf_dialogue_4",
+      "trigger": "interaction.elf",
+      "lines": [
+        {
+          "speaker": "elf",
+          "text": "It pains me to see such a beautiful part of the grove treated so carelessly. If this place is ever to return to its former glory, we must begin by removing what does not belong here. Take a net and use it to remove the debris from the water and around the shore. Once you have gathered everything, sort the rubbish properly."
+        }
+      ]
+    },
+    {
+      "id": "day_03.scene.elf_dialogue_5",
+      "trigger": "interaction.elf",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "He pauses before looking back at you."
+        }
+      ]
+    },
+    {
+      "id": "day_03.scene.elf_dialogue_6",
+      "trigger": "interaction.elf",
+      "lines": [
+        {
+          "speaker": "elf",
+          "text": "I have other matters to attend to, so I shall leave you to the task. Once you are finished, I will inspect the pond myself. Talk to me later if you are unable to complete the task."
+        }
+      ]
+    },
+    {
+      "id": "day_03.scene.fae_dialogue_1",
+      "trigger": "interaction.fae",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "The fae approaches you with a knowing smile."
+        }
+      ]
+    },
+    {
+      "id": "day_03.scene.fae_dialogue_2",
+      "trigger": "interaction.fae",
+      "lines": [
+        {
+          "speaker": "fae",
+          "text": "I have another little task for you. You know that pond in the grove? There’s something important at the bottom of it—a key. It unlocks the second lock on the gate, so if you want to get out of this grove, you’ll need to retrieve it. You’ll have to use a net to reach the bottom and bring the key back up."
+        }
+      ]
+    },
+    {
+      "id": "day_03.scene.fae_dialogue_3",
+      "trigger": "interaction.fae",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "She pauses, watching you carefully."
+        }
+      ]
+    },
+    {
+      "id": "day_03.scene.fae_dialogue_4",
+      "trigger": "interaction.fae",
+      "lines": [
+        {
+          "speaker": "fae",
+          "text": "Once you have it, leave at the side of the pond, I’ll get it from you later. That key will bring us one step closer to our freedom."
+        }
+      ]
+    },
+    {
+      "id": "day_03.scene.fae_dialogue_5",
+      "trigger": "interaction.fae",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "She shoos you away."
+        }
+      ]
+    },
+    {
+      "id": "day_03.scene.fae_dialogue_6",
+      "trigger": "interaction.fae",
+      "lines": [
+        {
+          "speaker": "fae",
+          "text": "Go on, then. I’ll be waiting. Let me know if you can’t find it."
+        }
+      ]
+    }
+  ]
 }

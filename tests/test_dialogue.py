@@ -43,19 +43,130 @@ class JsonDialogueServiceTests(unittest.TestCase):
             "set up your sleeping bag and quickly nod off to sleep.",
         )
 
-    def test_empty_day_files_load_without_events(self) -> None:
+    def test_day_files_load_events_for_their_day(self) -> None:
         service = JsonDialogueService()
 
         self.assertEqual(
             tuple(event.id for event in service.get_events_for_day(1)),
-            ("day_01.scene.intro", "day_01.scene.fall_asleep"),
+            (
+                "day_01.scene.intro",
+                "day_01.scene.elf_dialogue_1",
+                "day_01.scene.elf_dialogue_2",
+                "day_01.scene.elf_dialogue_3",
+                "day_01.scene.elf_dialogue_4",
+                "day_01.scene.fae_dialogue_1",
+                "day_01.scene.fae_dialogue_2",
+                "day_01.scene.fae_dialogue_3",
+                "day_01.scene.fae_dialogue_4",
+                "day_01.scene.fae_dialogue_5",
+                "day_01.scene.fae_dialogue_6",
+                "day_01.scene.fae_dialogue_7",
+                "day_01.scene.fae_dialogue_8",
+                "day_01.scene.fae_dialogue_9",
+                "day_01.scene.fall_asleep",
+            ),
+        )
+        self.assertEqual(
+            tuple(
+                event.id for event in service.get_events_for("scene.intro")
+            ),
+            (
+                "day_01.scene.intro",
+                "day_01.scene.elf_dialogue_1",
+                "day_01.scene.elf_dialogue_2",
+                "day_01.scene.elf_dialogue_3",
+                "day_01.scene.elf_dialogue_4",
+                "day_01.scene.fae_dialogue_1",
+                "day_01.scene.fae_dialogue_2",
+                "day_01.scene.fae_dialogue_3",
+                "day_01.scene.fae_dialogue_4",
+                "day_01.scene.fae_dialogue_5",
+                "day_01.scene.fae_dialogue_6",
+                "day_01.scene.fae_dialogue_7",
+                "day_01.scene.fae_dialogue_8",
+                "day_01.scene.fae_dialogue_9",
+            ),
         )
         self.assertEqual(service.get_events_for("scene.day_2"), ())
         self.assertEqual(service.get_events_for("scene.day_3"), ())
         self.assertEqual(service.get_events_for("scene.day_4"), ())
+        day_three_elf_events = tuple(
+            event
+            for event in service.get_events_for("interaction.elf")
+            if event.day == 3
+        )
+        self.assertEqual(
+            tuple(event.id for event in day_three_elf_events),
+            tuple(f"day_03.scene.elf_dialogue_{index}" for index in range(1, 7)),
+        )
+        self.assertEqual(
+            tuple(event.lines[0].speaker for event in day_three_elf_events),
+            ("narrator", "elf", "narrator", "elf", "narrator", "elf"),
+        )
+        day_three_fae_events = tuple(
+            event
+            for event in service.get_events_for("interaction.fae")
+            if event.day == 3
+        )
+        self.assertEqual(
+            tuple(event.id for event in day_three_fae_events),
+            tuple(f"day_03.scene.fae_dialogue_{index}" for index in range(1, 7)),
+        )
+        self.assertEqual(
+            tuple(event.lines[0].speaker for event in day_three_fae_events),
+            ("narrator", "fae", "narrator", "fae", "narrator", "fae"),
+        )
+        day_four_elf_events = tuple(
+            event
+            for event in service.get_events_for("interaction.elf")
+            if event.day == 4
+        )
+        self.assertEqual(
+            tuple(event.id for event in day_four_elf_events),
+            tuple(f"day_04.scene.elf_dialogue_{index}" for index in range(1, 5)),
+        )
+        self.assertEqual(
+            tuple(event.lines[0].speaker for event in day_four_elf_events),
+            ("narrator", "elf", "narrator", "elf"),
+        )
+        day_four_fae_events = tuple(
+            event
+            for event in service.get_events_for("interaction.fae")
+            if event.day == 4
+        )
+        self.assertEqual(
+            tuple(event.id for event in day_four_fae_events),
+            tuple(f"day_04.scene.fae_dialogue_{index}" for index in range(1, 5)),
+        )
+        self.assertEqual(
+            tuple(event.lines[0].speaker for event in day_four_fae_events),
+            ("narrator", "fae", "narrator", "fae"),
+        )
+        day_two_events = service.get_events_for("interaction.elf")
+        self.assertEqual(
+            tuple(event.id for event in day_two_events),
+            tuple(f"day_02.scene.elf_dialogue_{index}" for index in range(1, 7)),
+        )
+        self.assertEqual(
+            tuple(event.day for event in day_two_events),
+            (2, 2, 2, 2, 2, 2),
+        )
+        self.assertEqual(
+            tuple(event.lines[0].speaker for event in day_two_events),
+            ("narrator", "elf", "narrator", "elf", "narrator", "elf"),
+        )
+        day_two_fae_events = service.get_events_for("interaction.fae")
+        self.assertEqual(
+            tuple(event.id for event in day_two_fae_events),
+            tuple(f"day_02.scene.fae_dialogue_{index}" for index in range(1, 9)),
+        )
+        self.assertEqual(
+            tuple(event.lines[0].speaker for event in day_two_fae_events),
+            ("narrator", "fae", "narrator", "fae", "narrator", "fae", "narrator", "fae"),
+        )
         self.assertEqual(
             {event.day for day in range(1, 5) for event in service.get_events_for_day(day)},
-            {1},
+            {1, 2, 3, 4},
         )
         with tempfile.TemporaryDirectory() as directory:
             content_dir = Path(directory)

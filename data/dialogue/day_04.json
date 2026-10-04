@@ -1,4 +1,85 @@
 {
   "day": 4,
-  "events": []
+  "events": [
+    {
+      "id": "day_04.scene.elf_dialogue_1",
+      "trigger": "interaction.elf",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "You meet with the elf once again."
+        }
+      ]
+    },
+    {
+      "id": "day_04.scene.elf_dialogue_2",
+      "trigger": "interaction.elf",
+      "lines": [
+        {
+          "speaker": "elf",
+          "text": "Ah, you’ve returned. I have another task for you today. Please gather the fruits and vegetables growing in the garden and bring them to me. The animals of the grove have been struggling to find enough food. I intend to distribute what you gather among them so they do not go hungry.”"
+        }
+      ]
+    },
+    {
+      "id": "day_04.scene.elf_dialogue_3",
+      "trigger": "interaction.elf",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "He pauses, looking toward the surrounding grove."
+        }
+      ]
+    },
+    {
+      "id": "day_04.scene.elf_dialogue_4",
+      "trigger": "interaction.elf",
+      "lines": [
+        {
+          "speaker": "elf",
+          "text": "This place is home to more than just us. Every creature here depends upon the grove to survive, and while their natural food sources have become scarce, we must do what we can to help them. Please use a spade to gather the produce and leave it near the garden for me to pick up later. If they will not be ready for me to pick them up, talk to me later."
+        }
+      ]
+    },
+    {
+      "id": "day_04.scene.fae_dialogue_1",
+      "trigger": "interaction.fae",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "The next day, you meet with the fae, who greets you with a smile that seems more forced than usual."
+        }
+      ]
+    },
+    {
+      "id": "day_04.scene.fae_dialogue_2",
+      "trigger": "interaction.fae",
+      "lines": [
+        {
+          "speaker": "fae",
+          "text": "Finally, I was starting to wonder when you’d show up. There’s still one lock that you can help me with. I need you to gather some herbs from the garden so I can brew a potion strong enough to melt the final lock."
+        }
+      ]
+    },
+    {
+      "id": "day_04.scene.fae_dialogue_3",
+      "trigger": "interaction.fae",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "She taps her foot impatiently."
+        }
+      ]
+    },
+    {
+      "id": "day_04.scene.fae_dialogue_4",
+      "trigger": "interaction.fae",
+      "lines": [
+        {
+          "speaker": "fae",
+          "text": "It shouldn’t take long. Just collect the herbs I need and hide them in a bush near the garden so the pesky elf doesn’t see them. I’ll need some time to brew the potion, but it will be ready tomorrow morning. Talk to me later if you aren’t able to collect them."
+        }
+      ]
+    }
+  ]
 }

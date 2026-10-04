@@ -230,10 +230,37 @@ class DayFlowTests(unittest.TestCase):
         app.update(0)
         self.assertEqual(dialogue._events[0].id, "day_01.scene.intro")
 
+        opening_event_ids = (
+            "day_01.scene.elf_dialogue_1",
+            "day_01.scene.elf_dialogue_2",
+            "day_01.scene.elf_dialogue_3",
+            "day_01.scene.elf_dialogue_4",
+            "day_01.scene.fae_dialogue_1",
+            "day_01.scene.fae_dialogue_2",
+            "day_01.scene.fae_dialogue_3",
+            "day_01.scene.fae_dialogue_4",
+            "day_01.scene.fae_dialogue_5",
+            "day_01.scene.fae_dialogue_6",
+            "day_01.scene.fae_dialogue_7",
+            "day_01.scene.fae_dialogue_8",
+            "day_01.scene.fae_dialogue_9",
+        )
+        for event_id in opening_event_ids:
+            dialogue.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e))
+            app.update(0)
+            self.assertIs(app.current_screen_id, ScreenId.INTERACTION)
+            self.assertEqual(
+                dialogue._events[dialogue._event_index].id,
+                event_id,
+            )
+
         dialogue.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e))
         app.update(0)
         self.assertIs(app.current_screen_id, ScreenId.GROVE)
-        self.assertEqual(app._completed_event_ids, {"day_01.scene.intro"})
+        self.assertEqual(
+            app._completed_event_ids,
+            {"day_01.scene.intro", *opening_event_ids},
+        )
         self.assertIsNone(app._fade_phase)
 
         grove.sleep_requested = True
@@ -245,6 +272,7 @@ class DayFlowTests(unittest.TestCase):
         self.assertEqual(app._fade_phase, "out")
         self.assertEqual(app._completed_event_ids, {
             "day_01.scene.intro",
+            *opening_event_ids,
             "day_01.scene.fall_asleep",
         })
 

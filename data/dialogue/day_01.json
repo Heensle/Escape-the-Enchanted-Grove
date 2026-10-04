@@ -17,6 +17,142 @@
       ]
     },
     {
+      "id": "day_01.scene.elf_dialogue_1",
+      "trigger": "scene.intro",
+      "lines": [
+        {
+          "speaker": "elf",
+          "text": "Do you have any idea what you’ve done? You’ve fallen straight through the roof of my home!"
+        }
+      ]
+    },
+    {
+      "id": "day_01.scene.elf_dialogue_2",
+      "trigger": "scene.intro",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "He looks up and down at you, clearly still rattled and confused. "
+        }
+      ]
+    },
+    {
+      "id": "day_01.scene.elf_dialogue_3",
+      "trigger": "scene.intro",
+      "lines": [
+        {
+          "speaker": "elf",
+          "text": "I don’t know how you feel through my roof, but you clearly don’t seem to be from these parts, you at least deserve an explanation. You are in an enchanted grove, a place I have lived in and protected for centuries. Once, it was thriving, beautiful, and full of life, but its condition has gradually deteriorated over the years. I have done everything I can to restore it, but perhaps now I could use your help. "
+        }
+      ]
+    },
+    {
+      "id": "day_01.scene.elf_dialogue_4",
+      "trigger": "scene.intro",
+      "lines": [
+        {
+          "speaker": "elf",
+          "text": "Unfortunately, you cannot simply leave. The only way out is through that gate, and it has been sealed with three locks. I will unlock one lock for every task you complete for me. I know this is not where you intended to end up, but perhaps your arrival can do some good after all. For now, get some rest, and come speak to me tomorrow. I will tell you what needs to be done. "
+        }
+      ]
+    },
+    {
+      "id": "day_01.scene.fae_dialogue_1",
+      "trigger": "scene.intro",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "A soft voice suddenly whispered from behind you."
+        }
+      ]
+    },
+    {
+      "id": "day_01.scene.fae_dialogue_2",
+      "trigger": "scene.intro",
+      "lines": [
+        {
+          "speaker": "fae",
+          "text": "Oh, don’t mind him. He’s always like that—so serious, so self-important. Honestly, I don’t know how anyone can stand listening to him talk about this grove for hours."
+        }
+      ]
+    },
+    {
+      "id": "day_01.scene.fae_dialogue_3",
+      "trigger": "scene.intro",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "A fae stepped out from behind a tree, smiling warmly. "
+        }
+      ]
+    },
+    {
+      "id": "day_01.scene.fae_dialogue_4",
+      "trigger": "scene.intro",
+      "lines": [
+        {
+          "speaker": "fae",
+          "text": "I heard what he said to you, and I couldn’t help but feel sorry for you. Trapped here, forced to run errands for an elf you barely know… it hardly seems fair, does it? "
+        }
+      ]
+    },
+    
+    {
+      "id": "day_01.scene.fae_dialogue_5",
+      "trigger": "scene.intro",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "She gets closer to you."
+        }
+      ]
+    },
+
+    {
+      "id": "day_01.scene.fae_dialogue_6",
+      "trigger": "scene.intro",
+      "lines": [
+        {
+          "speaker": "fae",
+          "text": "But there’s another way out. You don’t need to do his little tasks or wait for him to unlock those gates. I know how we can break the locks ourselves. If you help me, we can both escape this place and go wherever we please. You could finally return to your world, and I could… well, I have a few things I’d like to take care of there myself."
+        }
+      ]
+    },
+    
+    {
+      "id": "day_01.scene.fae_dialogue_7",
+      "trigger": "scene.intro",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "She laughed softly."
+        }
+      ]
+    },
+
+    {
+      "id": "day_01.scene.fae_dialogue_8",
+      "trigger": "scene.intro",
+      "lines": [
+        {
+          "speaker": "fae",
+          "text": "You don’t have to trust him just because he claims to be protecting this grove. Help me instead. I promise, I only want to help you get home. Just… think about it, alright? You don’t have to decide right now. But when you do, come find me. We could both be free."
+        }
+      ]
+    },
+
+    {
+      "id": "day_01.scene.fae_dialogue_9",
+      "trigger": "scene.intro",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "With one last smile, the fae slipped back into the trees."
+        }
+      ]
+    },
+
+    {
       "id": "day_01.scene.fall_asleep",
       "trigger": "scene.fall_asleep",
       "lines": [
