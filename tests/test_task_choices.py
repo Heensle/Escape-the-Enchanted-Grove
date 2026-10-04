@@ -177,6 +177,9 @@ class TaskChoicesTests(unittest.TestCase):
         self.assertIs(app.current_screen_id, ScreenId.TASK_CHOICES)
         self.assertNotIn("break_gate_lock", grove.completed_tasks)
         self.assertIn("break_gate_lock", grove.failed_tasks)
+        self.assertFalse(grove.all_daily_tasks_complete)
+
+        grove.mark_character_talked("fae")
         self.assertTrue(grove.all_daily_tasks_complete)
 
     def test_jigsaw_can_be_cancelled_without_completing_task(self) -> None:
