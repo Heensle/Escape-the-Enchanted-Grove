@@ -126,7 +126,6 @@ class GroveScreenTests(unittest.TestCase):
                 ("Break the gate lock with the hammer — FAILED", False, False),
             ),
         )
-
         self.grove.begin_day(4)
         self.grove.mark_character_talked("elf")
         self.grove.mark_character_talked("fae")
@@ -134,6 +133,61 @@ class GroveScreenTests(unittest.TestCase):
             self.grove._daily_task_rows()[-1],
             ("Go through the garden maze", False, True),
         )
+
+    def test_first_day_does_not_require_character_conversations(self) -> None:
+        self.grove.begin_day(1)
+        self.assertFalse(self.grove.both_characters_talked)
+        self.assertEqual(self.grove._daily_task_rows(), ())
+        self.assertTrue(self.grove.all_daily_tasks_complete)
+
+        self.grove.player_position.update(self.grove.tool_positions["Sleep"])
+        self.grove.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e))
+        self.grove.draw(pygame.Surface(self.grove.size))
+        self.grove.handle_event(
+            pygame.event.Event(
+                pygame.MOUSEBUTTONDOWN,
+                button=pygame.BUTTON_LEFT,
+                pos=self.grove._sleep_yes_rect.center,
+            )
+        )
+
+        self.assertFalse(self.grove.sleep_confirmation_open)
+        self.assertTrue(self.grove.consume_sleep_request())
+
+    def test_completed_task_requires_follow_up_with_failed_task_giver(self) -> None:
+        self.grove.begin_day(2)
+        self.grove.mark_character_talked("elf")
+        self.grove.mark_character_talked("fae")
+        self.grove.choose_task("repair_roof")
+
+        self.assertTrue(self.grove._daily_task_rows()[1][1])
+        self.grove.complete_task("repair_roof")
+
+        rows = self.grove._daily_task_rows()
+        self.assertEqual(rows[1], ("Talk to the Fae", False, True))
+        self.assertFalse(self.grove.all_daily_tasks_complete)
+
+        self.grove.mark_character_talked("elf")
+        self.assertFalse(self.grove.all_daily_tasks_complete)
+        self.grove.mark_character_talked("fae")
+        self.assertEqual(
+            self.grove._daily_task_rows()[1],
+            ("Talk to the Fae", True, True),
+        )
+        self.assertTrue(self.grove.all_daily_tasks_complete)
+
+    def test_follow_up_character_matches_the_other_task_giver(self) -> None:
+        self.grove.begin_day(2)
+        self.grove.mark_character_talked("elf")
+        self.grove.mark_character_talked("fae")
+        self.grove.choose_task("break_gate_lock")
+        self.grove.complete_task("break_gate_lock")
+
+        self.assertEqual(
+            self.grove._daily_task_rows()[0],
+            ("Talk to the Elf", False, True),
+        )
+        self.assertFalse(self.grove.all_daily_tasks_complete)
 
     def test_character_interaction_emits_conversation_trigger(self) -> None:
         self.grove.player_position.update(self.grove.character_positions["Elf"])
@@ -181,6 +235,7 @@ class GroveScreenTests(unittest.TestCase):
         self.assertTrue(self.grove.consume_sleep_request())
 
     def test_sleep_is_locked_until_both_characters_have_been_talked_to(self) -> None:
+        self.grove.begin_day(2)
         self.grove.player_position.update(self.grove.tool_positions["Sleep"])
         self.grove.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e))
         self.grove.draw(pygame.Surface(self.grove.size))
@@ -221,6 +276,7 @@ class GroveScreenTests(unittest.TestCase):
         )
         self.grove.choose_task("repair_roof")
         self.grove.complete_task("repair_roof")
+        self.grove.mark_character_talked("fae")
         self.assertIs(
             self.grove.current_house_sprite,
             self.grove.sprites["house"],

@@ -64,6 +64,9 @@ class GroveScreen:
         self._completed_tasks: set[str] = set()
         self._chosen_tasks: dict[str, str] = {}
         self._failed_tasks: set[str] = set()
+        self._follow_up_character: str | None = None
+        self._follow_up_conversation_active = False
+        self._follow_up_conversation_complete = False
         self._character_choice_counts = {"elf": 0, "fae": 0}
         self._roof_repaired = False
         self._pond_drained = False
@@ -310,6 +313,11 @@ class GroveScreen:
         if normalized not in ("elf", "fae"):
             raise ValueError(f"Unsupported grove character: {character!r}")
         self._talked_today.add(normalized)
+        if (
+            self._follow_up_conversation_active
+            and normalized == self._follow_up_character
+        ):
+            self._follow_up_conversation_complete = True
 
     def begin_day(self, day_number: int) -> None:
         if not 1 <= day_number <= MAX_DAYS:
@@ -319,6 +327,9 @@ class GroveScreen:
         self._completed_tasks.clear()
         self._chosen_tasks.clear()
         self._failed_tasks.clear()
+        self._follow_up_character = None
+        self._follow_up_conversation_active = False
+        self._follow_up_conversation_complete = False
         self._sleep_confirmation = False
         self._sleep_blocked_message = ""
         self._pending_sleep_request = False
@@ -346,6 +357,10 @@ class GroveScreen:
         return self._talked_today >= {"elf", "fae"}
 
     @property
+    def requires_character_conversations(self) -> bool:
+        return self.day_number > 1
+
+    @property
     def completed_tasks(self) -> frozenset[str]:
         return frozenset(self._completed_tasks)
 
@@ -365,7 +380,14 @@ class GroveScreen:
         target_ids = {task.target for task in tasks}
         choices_made = target_ids <= self._chosen_tasks.keys()
         return (
-            self.both_characters_talked
+            (
+                not self.requires_character_conversations
+                or self.both_characters_talked
+            )
+            and (
+                not self._follow_up_conversation_active
+                or self._follow_up_conversation_complete
+            )
             and task_ids <= resolved_tasks
             and choices_made
         )
@@ -376,7 +398,7 @@ class GroveScreen:
             raise ValueError(
                 f"Task {task_id!r} is not available on day {self.day_number}."
             )
-        if not self.both_characters_talked:
+        if self.requires_character_conversations and not self.both_characters_talked:
             raise ValueError("Both characters must be talked to before tasks unlock.")
         if task_id in self._failed_tasks:
             raise ValueError(f"Task {task_id!r} has already failed.")
@@ -389,11 +411,18 @@ class GroveScreen:
                 f"Task {task_id!r} cannot be chosen after {chosen_task!r}."
             )
         self._chosen_tasks[task.target] = task_id
-        self._failed_tasks.update(
-            sibling.id
+        losing_tasks = tuple(
+            sibling
             for sibling in tasks_for_day(self.day_number)
             if sibling.target == task.target and sibling.id != task_id
         )
+        self._failed_tasks.update(sibling.id for sibling in losing_tasks)
+        self._follow_up_character = next(
+            (sibling.giver for sibling in losing_tasks if sibling.giver is not None),
+            None,
+        )
+        self._follow_up_conversation_active = False
+        self._follow_up_conversation_complete = False
         if chosen_task is None and task.giver is not None:
             self.record_character_choice(task.giver)
 
@@ -403,13 +432,14 @@ class GroveScreen:
             raise ValueError(
                 f"Task {task_id!r} is not available on day {self.day_number}."
             )
-        if not self.both_characters_talked:
+        if self.requires_character_conversations and not self.both_characters_talked:
             raise ValueError("Both characters must be talked to before tasks unlock.")
         if self._chosen_tasks.get(task.target) != task_id:
             raise ValueError(f"Task {task_id!r} has not been chosen.")
         if task_id in self._completed_tasks:
             raise ValueError(f"Task {task_id!r} is already complete.")
         self._completed_tasks.add(task_id)
+        self._follow_up_conversation_active = self._follow_up_character is not None
         if task_id == "repair_roof":
             self._roof_repaired = True
             self.background = self._build_background()
@@ -466,7 +496,7 @@ class GroveScreen:
         self._message_seconds = 4.0
 
     def _confirm_sleep(self) -> None:
-        if not self.both_characters_talked:
+        if self.requires_character_conversations and not self.both_characters_talked:
             self._sleep_blocked_message = "Talk to both the Elf and Fae before sleeping."
             return
         if not self.all_daily_tasks_complete:
@@ -673,11 +703,26 @@ class GroveScreen:
             )
 
     def _daily_task_rows(self) -> tuple[tuple[str, bool, bool], ...]:
-        rows: list[tuple[str, bool, bool]] = [
-            ("Talk to the Elf", "elf" in self._talked_today, True),
-            ("Talk to the Fae", "fae" in self._talked_today, True),
-        ]
-        unlocked = self.both_characters_talked
+        rows: list[tuple[str, bool, bool]] = []
+        if self.requires_character_conversations:
+            rows.extend(
+                (
+                    (
+                        "Talk to the Elf",
+                        self._conversation_requirement_complete("elf"),
+                        True,
+                    ),
+                    (
+                        "Talk to the Fae",
+                        self._conversation_requirement_complete("fae"),
+                        True,
+                    ),
+                )
+            )
+        unlocked = (
+            not self.requires_character_conversations
+            or self.both_characters_talked
+        )
         for task in tasks_for_day(self.day_number):
             if task.giver is None and not unlocked:
                 continue
@@ -700,6 +745,14 @@ class GroveScreen:
                 label = task.label
             rows.append((label, complete, available))
         return tuple(rows)
+
+    def _conversation_requirement_complete(self, character: str) -> bool:
+        if (
+            self._follow_up_conversation_active
+            and character == self._follow_up_character
+        ):
+            return self._follow_up_conversation_complete
+        return character in self._talked_today
 
     def _draw_task_list(
         self,
@@ -794,7 +847,10 @@ class GroveScreen:
         if not can_sleep:
             default_message = (
                 "Talk to both the Elf and Fae before sleeping."
-                if not self.both_characters_talked
+                if (
+                    self.requires_character_conversations
+                    and not self.both_characters_talked
+                )
                 else "Complete all of today's tasks before sleeping."
             )
             message = self._sleep_blocked_message or default_message
