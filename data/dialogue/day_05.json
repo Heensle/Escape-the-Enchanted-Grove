@@ -1,0 +1,246 @@
+{
+  "day": 5,
+  "events": [
+   {
+      "id": "day_05.scene.bad_ending_1",
+      "trigger": "scene.bad_ending",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "You wake up to the smell of smoke in the air. Looking around, you are startled to see that the grove is engulfed in flames. The house roof is still destroyed, the elf is desperately trying to put out the fire with the polluted pond water with little success, and the garden is in shambles."
+        }
+      ]
+    },
+    {
+      "id": "day_05.scene.bad_ending_2",
+      "trigger": "scene.bad_ending",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "In his panicked state, the elf meets your gaze. He looks at you with a face of anger, but continues in his futile efforts. You look around for the fae, who is cackling to herself near the gate which is now fully melted down. The fae turns toward you with a smug grin, clearly pleased with herself."
+        }
+      ]
+    },
+    {
+      "id": "day_05.scene.bad_ending_3",
+      "trigger": "scene.bad_ending",
+      "lines": [
+        {
+          "speaker": "fae",
+          "text": "Well, would you look at that—you actually helped me escape. It was taking forever for me to break all those locks myself, but now the barrier is destroyed and I’m free!"
+        }
+      ]
+    },
+    {
+      "id": "day_05.scene.bad_ending_4",
+      "trigger": "scene.bad_ending",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "She starts laughing again."
+        }
+      ]
+    },
+    {
+      "id": "day_05.scene.bad_ending_5",
+      "trigger": "scene.bad_ending",
+      "lines": [
+        {
+          "speaker": "fae",
+          "text": "It’s honestly hilarious! While that elf was busy thinking you were trying to help restore his precious grove, you were tearing it apart for me instead. You broke the locks, drained the pond, and took away what little remained of the grove’s resources. Exactly what I wanted and now we’re both free!"
+        }
+      ]
+    },
+    {
+      "id": "day_05.scene.bad_ending_6",
+      "trigger": "scene.bad_ending",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "The fae lets out another amused giggle, clearly delighted with herself."
+        }
+      ]
+    },
+    {
+      "id": "day_05.scene.bad_ending_7",
+      "trigger": "scene.bad_ending",
+      "lines": [
+        {
+          "speaker": "fae",
+          "text": "Well, this has been fun. I’m sure the elf will be absolutely delighted when he realizes what you’ve done. As for me, since I have a human world to return to, I have far more exciting plans in store. Thanks for the help, try not to miss me too much!"
+        }
+      ]
+    },
+    {
+      "id": "day_05.scene.bad_ending_8",
+      "trigger": "scene.bad_ending",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "She gives you one last smug grin before disappearing through the gate, her laughter fading into the distance and leaving you alone. You want to leave too, but can’t help looking back at the devastation. You know that this is your fault, but what can you do now? You can’t stay for long, the smoke is getting to your head. So you exit through the gate and escape the enchanted grove."
+        }
+      ]
+    },
+    
+    {
+      "id": "day_05.scene.neutral_ending_1",
+      "trigger": "scene.neutral_ending",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "You wake up and head over to the gate. The elf is already there, waiting for you."
+        }
+      ]
+    },
+    {
+      "id": "day_05.scene.neutral_ending_2",
+      "trigger": "scene.neutral_ending",
+      "lines": [
+        {
+          "speaker": "elf",
+          "text": "Although you have not successfully completed all of my requests, I will fulfill my promise."
+        }
+      ]
+    },
+    {
+      "id": "day_05.scene.neutral_ending_3",
+      "trigger": "scene.neutral_ending",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "He inspects the remaining locks carefully."
+        }
+      ]
+    },
+    {
+      "id": "day_05.scene.neutral_ending_4",
+      "trigger": "scene.neutral_ending",
+      "lines": [
+        {
+          "speaker": "elf",
+          "text": "Strange, it seems that some of these locks are destroyed."
+        }
+      ]
+    },
+    {
+      "id": "day_05.scene.neutral_ending_5",
+      "trigger": "scene.neutral_ending",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "He looks at you, pausing and contemplating his next action. He sighs."
+        }
+      ]
+    },
+    {
+      "id": "day_05.scene.neutral_ending_6",
+      "trigger": "scene.neutral_ending",
+      "lines": [
+        {
+          "speaker": "elf",
+          "text": "Well I suppose I did tell you that I will unlock as many locks as tasks you have completed for me. Very well, I will unlock the remaining locks for you."
+        }
+      ]
+    },
+    {
+      "id": "day_05.scene.neutral_ending_7",
+      "trigger": "scene.neutral_ending",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "The elf takes out a keyring from his pocket and unlocks whatever locks remained. The gate opens up."
+        }
+      ]
+    },
+    {
+      "id": "day_05.scene.neutral_ending_8",
+      "trigger": "scene.neutral_ending",
+      "lines": [
+        {
+          "speaker": "elf",
+          "text": "Alright, hurry along now. It seems that I will need to replace these locks somehow. Although I can let you out, I must maintain the barrier so evil spirits don’t escape the grove into the human world. I hope you didn’t run into any of those during your stay here."
+        }
+      ]
+    },
+    {
+      "id": "day_05.scene.neutral_ending_9",
+      "trigger": "scene.neutral_ending",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "You approach the gate, but before you head out, you look around your surroundings. In the corner of your eye, you can see the fae watching you from a distance with an annoyed expression. The elf seems to be impatiently waiting for you to leave. So you exit through the gate and escape the enchanted grove."
+        }
+      ]
+    },
+    {
+      "id": "day_05.scene.good_ending_1",
+      "trigger": "scene.good_ending",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "You wake up and head over to the gate. The elf is already there, waiting for you. He looks around the grove with a rare smile, taking in the scene. He turns toward you."
+        }
+      ]
+    },
+    {
+      "id": "day_05.scene.good_ending_2",
+      "trigger": "scene.good_ending",
+      "lines": [
+        {
+          "speaker": "elf",
+          "text": "You have done an excellent job. I must admit, when you first arrived, this grove was in a sorry state. But thanks to your efforts, it is already beginning to look like the place it once was. My house is all fixed up, the pond is clean, and the animals now have food to rely on. You have my sincerest thanks."
+        }
+      ]
+    },
+    {
+      "id": "day_05.scene.good_ending_3",
+      "trigger": "scene.good_ending",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "He gives you a proud nod, his usual sternness replaced by genuine appreciation."
+        }
+      ]
+    },
+    {
+      "id": "day_05.scene.good_ending_4",
+      "trigger": "scene.good_ending",
+      "lines": [
+        {
+          "speaker": "elf",
+          "text": "You have proven yourself to be a great help to this grove, and I am grateful for everything you have done."
+        }
+      ]
+    },
+    {
+      "id": "day_05.scene.good_ending_5",
+      "trigger": "scene.good_ending",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "Unbeknownst to the elf, the fae watches from a distance between the trees, her expression darkening as she listens. Her hands curl into fists, her eyes fixed angrily on you as she seethes with frustration."
+        }
+      ]
+    },
+    {
+      "id": "day_05.scene.good_ending_6",
+      "trigger": "scene.good_ending",
+      "lines": [
+        {
+          "speaker": "elf",
+          "text": "Please consider this grove a place you may call upon whenever you need it. I will still need to maintain the barrier to keep some evil spirits inside the grove, but please do not view its existence as a deterrent. You are always welcome here, should you ever wish to return, just write the message on a leaf and it will carry it to me."
+        }
+      ]
+    },
+    {
+      "id": "day_05.scene.good_ending_7",
+      "trigger": "scene.good_ending",
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "The elf bows toward you with open palms. You carefully bow back, trying to imitate his pose. You want to stay in the grove for just a bit longer, but you know that, for now, you must go. So you exit through the gate and escape the enchanted grove."
+        }
+      ]
+    }
+  ]
+}

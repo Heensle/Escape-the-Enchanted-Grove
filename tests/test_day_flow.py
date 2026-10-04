@@ -203,6 +203,36 @@ class DayFlowTests(unittest.TestCase):
         )
         self.assertFalse(app.running)
 
+    def test_day_five_ending_uses_three_task_thresholds(self) -> None:
+        app = GameApp.__new__(GameApp)
+        app._elf_task_count = 3
+        app._fae_task_count = 0
+        self.assertEqual(app._day_five_ending_key(), "good")
+
+        app._elf_task_count = 0
+        app._fae_task_count = 3
+        self.assertEqual(app._day_five_ending_key(), "bad")
+
+        app._elf_task_count = 2
+        app._fae_task_count = 1
+        self.assertEqual(app._day_five_ending_key(), "neutral")
+
+    def test_day_five_ending_uses_scene_ending_triggers(self) -> None:
+        app = GameApp.__new__(GameApp)
+        app.day_number = MAX_DAYS
+
+        app._elf_task_count = 3
+        app._fae_task_count = 0
+        self.assertEqual(app._dialogue_trigger_for_day("scene.intro"), "scene.good_ending")
+
+        app._elf_task_count = 0
+        app._fae_task_count = 3
+        self.assertEqual(app._dialogue_trigger_for_day("scene.fall_asleep"), "scene.bad_ending")
+
+        app._elf_task_count = 2
+        app._fae_task_count = 1
+        self.assertEqual(app._dialogue_trigger_for_day("scene.intro"), "scene.neutral_ending")
+
     def test_day_one_sleep_dialogue_requires_bedroll_confirmation(self) -> None:
         title = _OneShotScreen(ScreenId.INTERACTION)
         grove = _GroveRequestScreen()

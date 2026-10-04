@@ -6,6 +6,7 @@ Add or edit the JSON file for the relevant day here:
 - `day_02.json` — Day 2 dialogue
 - `day_03.json` — Day 3 dialogue
 - `day_04.json` — Day 4 dialogue
+- `day_05.json` — Day 5 dialogue
 
 Do not add dialogue text to the Python files in `game/dialogue/`. Those files
 load and provide the authored dialogue to the game.

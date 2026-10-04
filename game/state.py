@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 
 
-MAX_DAYS = 4
+MAX_DAYS = 5
 
 
 class Location(Enum):

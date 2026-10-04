@@ -67,6 +67,8 @@ class GameApp:
         self.gemini_service = GeminiDialogueService()
         self.relationship_store = RelationshipStore()
         self.relationship_store.reset_to_initial_scores()
+        self._elf_task_count = 0
+        self._fae_task_count = 0
         self.day_number = 1
         self.screens: dict[ScreenId, ScreenView] = {}
         self._create_screens()
@@ -117,6 +119,43 @@ class GameApp:
         self.surface = pygame.display.set_mode((0, 0), flags)
         for screen in self.screens.values():
             screen.resize(self.surface.get_size())
+
+    def _day_five_ending_key(self) -> str:
+        if self._elf_task_count >= 3 and self._elf_task_count > self._fae_task_count:
+            return "good"
+        if self._fae_task_count >= 3 and self._fae_task_count > self._elf_task_count:
+            return "bad"
+        return "neutral"
+
+    def _dialogue_trigger_for_day(self, trigger: str) -> str:
+        if self.day_number != MAX_DAYS:
+            return trigger
+        ending_key = self._day_five_ending_key()
+        if trigger in {"scene.intro", "scene.fall_asleep"}:
+            return f"scene.{ending_key}_ending"
+        if trigger in {"interaction.elf", "interaction.fae"}:
+            return f"scene.{ending_key}_ending"
+        return trigger
+
+    def _record_completed_task_count(
+        self,
+        task_id: str,
+        garden_ending: GardenEnding | None = None,
+    ) -> None:
+        task = get_task(task_id)
+        giver = task.giver
+        if giver == "elf":
+            self._elf_task_count += 1
+            return
+        if giver == "fae":
+            self._fae_task_count += 1
+            return
+        if task_id == "garden_maze" and garden_ending is not None:
+            direction = garden_ending.name.lower()
+            if direction == "elf":
+                self._elf_task_count += 1
+            elif direction == "fae":
+                self._fae_task_count += 1
 
     def handle_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.QUIT:
@@ -172,9 +211,10 @@ class GameApp:
             trigger = self.grove_screen.consume_dialogue_trigger()
             if trigger is not None:
                 character = self._conversation_character_for_trigger(trigger)
+                dialogue_trigger = self._dialogue_trigger_for_day(trigger)
                 events = tuple(
                     event
-                    for event in self.dialogue_service.get_events_for(trigger)
+                    for event in self.dialogue_service.get_events_for(dialogue_trigger)
                     if event.day == self.day_number
                     and event.id not in self._completed_event_ids
                 )
@@ -195,7 +235,12 @@ class GameApp:
                         self.current_screen_id = ScreenId.INTERACTION
                     return
                 self._interaction_character = character
-                self.interaction_screen.start(events, ScreenId.GROVE)
+                destination = (
+                    ScreenId.TITLE
+                    if self.day_number == MAX_DAYS
+                    else ScreenId.GROVE
+                )
+                self.interaction_screen.start(events, destination)
                 self.current_screen_id = ScreenId.INTERACTION
                 return
             if self.grove_screen.consume_sleep_request():
@@ -282,6 +327,7 @@ class GameApp:
             )
             if completed_task_id is not None:
                 self.grove_screen.complete_task(completed_task_id)
+                self._record_completed_task_count(completed_task_id, garden_ending)
                 relationship_message = self._record_task_relationship(
                     completed_task_id,
                     TaskOutcome.COMPLETED,
@@ -309,6 +355,7 @@ class GameApp:
         ):
             if self.lock_break_screen.completed:
                 self.grove_screen.complete_task("break_gate_lock")
+                self._record_completed_task_count("break_gate_lock")
                 relationship_message = self._record_task_relationship(
                     "break_gate_lock",
                     TaskOutcome.COMPLETED,
@@ -327,9 +374,10 @@ class GameApp:
         self.current_screen_id = destination
 
     def _begin_sleep(self) -> None:
+        dialogue_trigger = self._dialogue_trigger_for_day("scene.fall_asleep")
         sleep_events = tuple(
             event
-            for event in self.dialogue_service.get_events_for("scene.fall_asleep")
+            for event in self.dialogue_service.get_events_for(dialogue_trigger)
             if event.day == self.day_number
             and event.id not in self._completed_event_ids
         )
@@ -626,13 +674,16 @@ class GameApp:
         self.surface.blit(hint, hint.get_rect(center=(dialog.centerx, dialog.top + 90)))
 
     def _start_dialogue(self, trigger: str, destination: ScreenId) -> None:
+        dialogue_trigger = self._dialogue_trigger_for_day(trigger)
         events = tuple(
             event
-            for event in self.dialogue_service.get_events_for(trigger)
+            for event in self.dialogue_service.get_events_for(dialogue_trigger)
             if event.day == self.day_number
         )
         if not events:
             raise ValueError(f"No dialogue is authored for trigger {trigger!r}.")
+        if self.day_number == MAX_DAYS and trigger in {"scene.intro", "scene.fall_asleep"}:
+            destination = ScreenId.TITLE
         self.interaction_screen.start(events, destination)
         self.current_screen_id = ScreenId.INTERACTION
 
