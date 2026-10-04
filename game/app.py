@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pygame
 
-from game.dialogue.gemini import GeminiDialogueService
+from game.dialogue.gemini import GameContext, GeminiDialogueService
 from game.dialogue.relationships import TASK_SCORE_CHANGE, RelationshipStore
 from game.dialogue.service import JsonDialogueService
 from game.minigames.garden_maze import GardenMaze
@@ -24,6 +24,39 @@ from game.tasks.results import TaskOutcome, TaskResult
 class GameApp:
     DAY_FADE_SECONDS = 0.55
     QUIT_DIALOG_SIZE = (440, 190)
+
+    DAY_LOCATIONS = {
+        2: "house",
+        3: "pond",
+        4: "garden",
+    }
+
+    TASK_COMPLETION_CONSEQUENCES = {
+        (2, "elf"): "You fixed up the roof, it looks good as new.",
+        (2, "fae"): "You shattered the lock with the final hit.",
+        (
+            3,
+            "elf",
+        ): "You clear the rubble and pollution from the pond, leaving the water clean and the surrounding area free of trash.",
+        (
+            3,
+            "fae",
+        ): (
+            "You retrieve the key from the bottom of the pond, but as you pull "
+            "it free, the dam suddenly breaks loose, sending a rush of water "
+            "downstream and leaving the pond completely drained. Trash and rubble "
+            "is still scattered around the area. You carefully set the key down "
+            "onto a stone and leave."
+        ),
+        (
+            4,
+            "elf",
+        ): "You gather the fruits and vegetables and leave them next to the garden.",
+        (
+            4,
+            "fae",
+        ): "You gather the herbs and hide them away in a nearby bush.",
+    }
 
     def __init__(self) -> None:
         pygame.init()
@@ -147,6 +180,8 @@ class GameApp:
                 )
                 if not events:
                     if character is not None:
+                        game_context = self._build_game_context(character),    
+
                         self._interaction_character = character
                         self.interaction_screen.start_conversation(
                             character=character,
@@ -155,6 +190,7 @@ class GameApp:
                             apply_relationship_delta=self.relationship_store.apply_delta,
                             destination=ScreenId.GROVE,
                             day_number=self.day_number,
+                            game_context=game_context,
                         )
                         self.current_screen_id = ScreenId.INTERACTION
                     return
@@ -416,6 +452,107 @@ class GameApp:
             "interaction.fae": "fae",
         }
         return characters.get(trigger)
+
+    def _build_game_context(self, character: str) -> GameContext:
+        normalized_character = character.strip().lower()
+
+        completed_task_ids = tuple(
+            sorted(self.grove_screen.completed_tasks)
+        )
+        failed_task_ids = tuple(
+            sorted(self.grove_screen.failed_tasks)
+        )
+        chosen_task_ids = tuple(
+            sorted(self.grove_screen.chosen_tasks)
+        )
+
+        daily_tasks = tasks_for_day(self.day_number)
+
+        npc_task = next(
+            (
+                task
+                for task in daily_tasks
+                if (task.giver or "").strip().lower() == normalized_character
+            ),
+            None,
+        )
+
+        completed_task = None
+
+        for task_id in completed_task_ids:
+            task = get_task(task_id)
+            completed_task = task
+            break
+
+        completed_owner = None
+        completed_consequence = "No task was completed today."
+
+        if completed_task is not None:
+            completed_owner = (
+                completed_task.giver.strip().lower()
+                if completed_task.giver
+                else None
+            )
+
+            completed_consequence = self.TASK_COMPLETION_CONSEQUENCES.get(
+                (self.day_number, completed_owner),
+                "The completed task has no recorded consequence.",
+            )
+
+        if npc_task is None:
+            npc_task_text = "No task assigned."
+            npc_task_completed = False
+            npc_task_consequence = "No task was assigned to this NPC today."
+        else:
+            npc_task_text = (
+                f"{npc_task.label}: {npc_task.description}"
+            )
+
+            npc_task_completed = (
+                npc_task.id in completed_task_ids
+            )
+
+            if npc_task_completed:
+                npc_task_consequence = (
+                    self.TASK_COMPLETION_CONSEQUENCES.get(
+                        (self.day_number, normalized_character),
+                        "The task was completed.",
+                    )
+                )
+            elif npc_task.id in failed_task_ids:
+                npc_task_consequence = (
+                    "This task was marked as failed because "
+                    "the player chose the other task."
+                )
+            elif npc_task.id in chosen_task_ids:
+                npc_task_consequence = (
+                    "The player chose this task, but it was not completed."
+                )
+            else:
+                npc_task_consequence = (
+                    "The player did not choose this task."
+                )
+
+        return GameContext(
+            day=self.day_number,
+            location=self.DAY_LOCATIONS.get(
+                self.day_number,
+                "grove",
+            ),
+            completed_tasks=completed_task_ids,
+            failed_tasks=failed_task_ids,
+            chosen_tasks=chosen_task_ids,
+            completed_task=(
+                completed_task.id
+                if completed_task is not None
+                else None
+            ),
+            completed_task_owner=completed_owner,
+            completed_task_consequence=completed_consequence,
+            npc_task=npc_task_text,
+            npc_task_completed=npc_task_completed,
+            npc_task_consequence=npc_task_consequence,
+        )
 
     def draw(self) -> None:
         self.current_screen.draw(self.surface)
