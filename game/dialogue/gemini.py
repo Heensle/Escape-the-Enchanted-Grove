@@ -41,6 +41,11 @@ class GameContext:
     day: int
     location: str
 
+    # Exact task-state IDs from GroveScreen for the current day.
+    completed_tasks: tuple[str, ...]
+    failed_tasks: tuple[str, ...]
+    chosen_tasks: tuple[str, ...]
+
     # The task the player actually completed.
     # None means the player did not complete either task.
     completed_task: str | None
