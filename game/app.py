@@ -17,7 +17,7 @@ from game.screens.task_choices import JigsawScreen, TaskActivityScreen, TaskChoi
 from game.screens.title import TITLE, TitleScreen
 from game.state import MAX_DAYS
 from game.state import GardenEnding, HouseAction, Location, PondAction
-from game.tasks.daily import get_task, tasks_for_target
+from game.tasks.daily import get_task, tasks_for_day, tasks_for_target
 from game.tasks.results import TaskOutcome, TaskResult
 
 
@@ -180,7 +180,7 @@ class GameApp:
                 )
                 if not events:
                     if character is not None:
-                        game_context = self._build_game_context(character),    
+                        game_context = self._build_game_context(character)
 
                         self._interaction_character = character
                         self.interaction_screen.start_conversation(
