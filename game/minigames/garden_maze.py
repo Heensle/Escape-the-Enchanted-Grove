@@ -42,7 +42,7 @@ class GardenMaze:
         asset_path = (
             Path(__file__).resolve().parents[2]
             / "assets_images"
-            / "Main character.png"
+            / "TheMainCharacter.png"
         )
         image = pygame.image.load(str(asset_path))
         bounds = image.get_bounding_rect(min_alpha=8)
