@@ -42,6 +42,33 @@ class RelationshipStoreTests(unittest.TestCase):
             self.assertEqual(loaded.score("elf"), -4)
             self.assertEqual(loaded.score("fae"), 4)
 
+    def test_starting_a_program_resets_saved_relationship_scores(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "relationships.json"
+            saved_store = RelationshipStore(path)
+            saved_store.apply_delta("elf", 1)
+            saved_store.apply_delta("fae", -1)
+
+            def relationship_store_for_test() -> RelationshipStore:
+                return RelationshipStore(path)
+
+            with (
+                patch("game.app.RelationshipStore", side_effect=relationship_store_for_test),
+                patch("game.app.pygame.init"),
+                patch("game.app.pygame.display.set_mode") as set_mode,
+                patch("game.app.pygame.display.set_caption"),
+                patch("game.app.pygame.time.Clock"),
+                patch.object(GameApp, "_create_screens"),
+            ):
+                set_mode.return_value.get_size.return_value = (800, 600)
+                app = GameApp()
+
+            self.assertEqual(app.relationship_store.score("elf"), -5)
+            self.assertEqual(app.relationship_store.score("fae"), 5)
+            reloaded_store = RelationshipStore(path)
+            self.assertEqual(reloaded_store.score("elf"), -5)
+            self.assertEqual(reloaded_store.score("fae"), 5)
+
     def test_conversation_changes_are_limited_to_plus_or_minus_one(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             store = RelationshipStore(Path(directory) / "relationships.json")

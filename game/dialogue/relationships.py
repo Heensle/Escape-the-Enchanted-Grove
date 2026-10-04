@@ -39,6 +39,11 @@ class RelationshipStore:
     def score(self, character: str) -> int:
         return self._scores[self._normalize_character(character)]
 
+    def reset_to_initial_scores(self) -> None:
+        scores = dict(INITIAL_SCORES)
+        self._save(scores)
+        self._scores = scores
+
     def apply_delta(self, character: str, delta: int) -> int:
         normalized = self._normalize_character(character)
         if (

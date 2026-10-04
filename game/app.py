@@ -28,6 +28,7 @@ class GameApp:
         self.dialogue_service = JsonDialogueService()
         self.gemini_service = GeminiDialogueService()
         self.relationship_store = RelationshipStore()
+        self.relationship_store.reset_to_initial_scores()
         self.day_number = 1
         self.screens: dict[ScreenId, ScreenView] = {}
         self._create_screens()
