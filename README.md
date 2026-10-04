@@ -21,19 +21,27 @@ Approach the Elf and the Fae and press **E** to talk. The task list beside the
 day count tracks both conversations and reveals their daily requests. Tasks
 remain visibly locked until you have talked to both characters that day.
 Interact with the day's object (the hammer on day 2, net on day 3, or garden on
-day 4) to choose an available task. The roof-repair choice opens a 3-by-3
-square-piece jigsaw: drag each piece from the tray into the matching roof slot,
-using the gradient reference as a guide. The other unfinished tasks open their
-own task placeholders. The gate remains a solid obstacle and does nothing when
-interacted with.
+day 4) to choose an available task. The roof-repair choice opens a 3-by-3 square-piece jigsaw: drag each piece from the
+tray into the matching roof slot, using the gradient reference as a guide. The
+Elf's pond-cleaning choice opens a vertical lake cross-section: use the net to
+drag randomly shuffled litter into the trash or recycling bin according to its
+material. The Fae's key-retrieval choice opens a clicker: pull the key free to
+lift the pond plug and drain the lake. The grove switches to the drained pond
+art after the task; optional `PondWater.png` and `PondDrained.png` images in
+`assets_images/` replace the procedural pond backgrounds when present. The gate
+remains a solid obstacle and does nothing when interacted with.
+
+On day 4, the garden opens a tile maze. Move the tiny player with **WASD** or
+the **arrow keys**, collect all four vegetables, then leave through the Elf's
+lower-left exit or the Fae's upper-right exit to deliver the harvest. The
+chosen character receives the garden-task relationship change.
 
 To end any day, complete every item in the task list, approach the bedroll box
 beside the house, press **E**, then click **Sleep** to confirm. Day 1 requires
 both conversations; days 2 and 3 also require both assigned tasks; day 4
 requires the garden maze and is the final day. After sleeping on day 4, the
-story ends at the epilogue; there is no fifth day. Until the pond and maze
-mechanics are implemented, their task screens expose an explicit temporary
-completion button. On days 2 and 3, choosing one of the two tasks for the hammer or net
+story ends at the epilogue; there is no fifth day. On days 2 and 3, choosing
+one of the two tasks for the hammer or net
 locks out the other path; the unchosen request is marked **FAILED**.
 Authored interaction events play when their trigger is available. When no
 interaction event is authored, speaking to the Elf or Fae opens a Gemini chat.
@@ -85,9 +93,10 @@ from the image so they remain readable and scale independently.
   ending rules.
 - `game/tasks/` contains the daily task catalog, house/pond/garden briefs,
   and the task result contract.
-- `game/minigames/` contains self-contained minigames. The lock-break clicker
-  is registered as `ScreenId.LOCK_BREAK`; `game/screens/task_choices.py`
-  contains the daily option gate and the roof jigsaw scaffold.
+- `game/minigames/` contains self-contained minigames. The lock-break clicker,
+  pond-cleaning sorter, and garden maze are registered as `ScreenId.LOCK_BREAK`,
+  `ScreenId.CLEAN_POND`, and `ScreenId.GARDEN_MAZE`; `game/screens/task_choices.py`
+  contains the daily option gate and the roof jigsaw.
 - `game/dialogue/` contains the authored-dialogue loader and Gemini client; do
   not add authored dialogue here.
 - `data/dialogue/` contains writer-authored dialogue files, one JSON file per

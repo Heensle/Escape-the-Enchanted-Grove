@@ -1,10 +1,14 @@
 import unittest
 from concurrent.futures import Future
+from pathlib import Path
+import tempfile
 
 import pygame
 
 from game.app import GameApp
 from game.dialogue.gemini import GeminiReply
+from game.dialogue.relationships import RelationshipStore
+from game.minigames.pond_cleanup import PondCleanup
 from game.screens.grove import GroveScreen
 from game.screens.interaction import InteractionScreen
 from game.screens.screen import ScreenId
@@ -79,6 +83,7 @@ class TaskChoicesTests(unittest.TestCase):
         jigsaw = JigsawScreen((800, 600))
         activity = TaskActivityScreen((800, 600))
         lock_break = LockBreakClicker((800, 600))
+        pond_cleanup = PondCleanup((800, 600))
         app = GameApp.__new__(GameApp)
         app.day_number = 2
         app.current_screen_id = ScreenId.GROVE
@@ -88,12 +93,18 @@ class TaskChoicesTests(unittest.TestCase):
             ScreenId.JIGSAW: jigsaw,
             ScreenId.TASK_ACTIVITY: activity,
             ScreenId.LOCK_BREAK: lock_break,
+            ScreenId.CLEAN_POND: pond_cleanup,
         }
         app.grove_screen = grove
         app.task_choices_screen = choices
         app.jigsaw_screen = jigsaw
         app.task_activity_screen = activity
         app.lock_break_screen = lock_break
+        app.pond_cleanup_screen = pond_cleanup
+        with tempfile.TemporaryDirectory() as directory:
+            app.relationship_store = RelationshipStore(
+                Path(directory) / "relationships.json"
+            )
         app._fade_phase = None
 
         app._start_task_choices("hammer")
@@ -150,6 +161,7 @@ class TaskChoicesTests(unittest.TestCase):
         self.assertEqual(jigsaw.board, list(range(len(jigsaw.board))))
         app.update(0)
         self.assertIn("repair_roof", grove.completed_tasks)
+        self.assertEqual(app.relationship_store.score("elf"), -2)
 
         app._start_task_choices("hammer")
         choices.handle_event(

@@ -25,6 +25,10 @@ class GroveScreen:
         "broken_house": (150, 300),
     }
     GATE_SPRITE_SIZE = (220, 190)
+    POND_BACKGROUND_FILES = {
+        "water": "PondWater.png",
+        "drained": "PondDrained.png",
+    }
 
     FEATURES = (
         ("House", pygame.Rect(205, 150, 335, 245), "The house needs attention."),
@@ -58,10 +62,12 @@ class GroveScreen:
         self._chosen_tasks: dict[str, str] = {}
         self._failed_tasks: set[str] = set()
         self._roof_repaired = False
+        self._pond_drained = False
         self.day_number = 1
         self._message = "Explore the grove. Approach something and press E."
         self._message_seconds = 0.0
         self._asset_sources = self._load_assets()
+        self._pond_background_images = self._load_pond_background_images()
         self._setup_world((0.5, 0.5))
 
     @staticmethod
@@ -82,6 +88,16 @@ class GroveScreen:
                 raise ValueError(f"Image asset has no visible pixels: {filename}")
             assets[name] = image.subsurface(bounds).copy()
         return assets
+
+    @staticmethod
+    def _load_pond_background_images() -> dict[str, pygame.Surface]:
+        asset_directory = Path(__file__).resolve().parents[2] / "assets_images"
+        images: dict[str, pygame.Surface] = {}
+        for state, filename in GroveScreen.POND_BACKGROUND_FILES.items():
+            path = asset_directory / filename
+            if path.is_file():
+                images[state] = pygame.image.load(str(path))
+        return images
 
     def _setup_world(self, player_fraction: tuple[float, float]) -> None:
         width, height = self.size
@@ -283,21 +299,54 @@ class GroveScreen:
             (62, 107, 108),
             pond.inflate(round(52 * self.scale_x), round(48 * self.scale_y)),
         )
-        pygame.draw.ellipse(background, (62, 136, 150), pond)
-        pygame.draw.ellipse(
-            background,
-            (118, 182, 174),
-            pond.inflate(-round(28 * self.scale_x), -round(25 * self.scale_y)),
-            width=max(2, round(5 * self.scale)),
-        )
-        for fraction in (0.28, 0.52, 0.73):
-            x = pond.left + round(pond.width * fraction)
-            y = pond.top + round(pond.height * (0.42 if fraction == 0.52 else 0.65))
+        pond_state = "drained" if self._pond_drained else "water"
+        pond_image = self._pond_background_images.get(pond_state)
+        if pond_image is not None:
+            pond_image = pygame.transform.smoothscale(pond_image, pond.size)
+            background.blit(pond_image, pond.topleft)
+        elif self._pond_drained:
+            pygame.draw.ellipse(background, (119, 100, 66), pond)
             pygame.draw.ellipse(
                 background,
-                (166, 194, 139),
-                pygame.Rect(x, y, round(36 * self.scale_x), round(17 * self.scale_y)),
+                (83, 74, 54),
+                pond.inflate(-round(34 * self.scale_x), -round(28 * self.scale_y)),
             )
+            pygame.draw.ellipse(
+                background,
+                (150, 128, 81),
+                pond.inflate(-round(28 * self.scale_x), -round(25 * self.scale_y)),
+                width=max(2, round(5 * self.scale)),
+            )
+            for fraction in (0.28, 0.52, 0.73):
+                x = pond.left + round(pond.width * fraction)
+                y = pond.top + round(pond.height * (0.42 if fraction == 0.52 else 0.65))
+                pygame.draw.ellipse(
+                    background,
+                    (132, 112, 73),
+                    pygame.Rect(x, y, round(36 * self.scale_x), round(17 * self.scale_y)),
+                )
+            pygame.draw.circle(
+                background,
+                (181, 157, 95),
+                (pond.centerx, pond.centery),
+                max(7, round(13 * self.scale)),
+            )
+        else:
+            pygame.draw.ellipse(background, (62, 136, 150), pond)
+            pygame.draw.ellipse(
+                background,
+                (118, 182, 174),
+                pond.inflate(-round(28 * self.scale_x), -round(25 * self.scale_y)),
+                width=max(2, round(5 * self.scale)),
+            )
+            for fraction in (0.28, 0.52, 0.73):
+                x = pond.left + round(pond.width * fraction)
+                y = pond.top + round(pond.height * (0.42 if fraction == 0.52 else 0.65))
+                pygame.draw.ellipse(
+                    background,
+                    (166, 194, 139),
+                    pygame.Rect(x, y, round(36 * self.scale_x), round(17 * self.scale_y)),
+                )
 
         garden = self.feature_rects["Garden"]
         pygame.draw.rect(
@@ -568,6 +617,13 @@ class GroveScreen:
         if task_id == "repair_roof":
             self._roof_repaired = True
             self.background = self._build_background()
+        elif task_id == "retrieve_key":
+            self._pond_drained = True
+            self.background = self._build_background()
+
+    @property
+    def pond_drained(self) -> bool:
+        return self._pond_drained
 
     @property
     def current_house_sprite(self) -> pygame.Surface:
