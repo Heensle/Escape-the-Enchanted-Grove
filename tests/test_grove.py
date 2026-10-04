@@ -179,6 +179,10 @@ class GroveScreenTests(unittest.TestCase):
         )
         self.grove.choose_task("repair_roof")
         self.grove.complete_task("repair_roof")
+        self.assertIs(
+            self.grove.current_house_sprite,
+            self.grove.sprites["broken_house"],
+        )
         self.grove.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e))
         self.grove.draw(pygame.Surface(self.grove.size))
         self.grove.handle_event(
@@ -264,10 +268,30 @@ class GroveScreenTests(unittest.TestCase):
     def test_uploaded_art_is_loaded_and_scaled_for_grove(self) -> None:
         self.assertEqual(
             set(self.grove.sprites),
-            {"player", "elf", "fae", "broken_house"},
+            {"player", "elf", "fae", "house", "broken_house"},
         )
         self.assertEqual(self.grove.sprites["player"].get_size(), (92, 122))
+        self.assertEqual(self.grove.sprites["house"].get_size(), (150, 300))
         self.assertEqual(self.grove.sprites["broken_house"].get_size(), (150, 300))
+
+    def test_intact_house_changes_to_broken_art_after_roof_repair(self) -> None:
+        self.assertIs(self.grove.current_house_sprite, self.grove.sprites["house"])
+        self.grove.begin_day(2)
+        self.grove.mark_character_talked("elf")
+        self.grove.mark_character_talked("fae")
+        self.grove.choose_task("repair_roof")
+        self.grove.complete_task("repair_roof")
+
+        self.assertIs(
+            self.grove.current_house_sprite,
+            self.grove.sprites["broken_house"],
+        )
+        self.grove.begin_day(3)
+        self.grove.resize((1024, 768))
+        self.assertIs(
+            self.grove.current_house_sprite,
+            self.grove.sprites["broken_house"],
+        )
 
 
 if __name__ == "__main__":
