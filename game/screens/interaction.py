@@ -59,7 +59,6 @@ class InteractionScreen:
         self._history_scroll = 0
         self._conversation_day = 1
         self._status = ""
-        game_context = self._build_game_context(character)
 
 
     @property
