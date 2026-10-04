@@ -7,7 +7,7 @@ from typing import Callable
 
 import pygame
 
-from game.dialogue.gemini import GeminiReply
+from game.dialogue.gemini import GameContext, GeminiReply
 from game.dialogue.service import DialogueEvent
 from game.screens.screen import ScreenId
 
@@ -39,7 +39,13 @@ class InteractionScreen:
         self._relationship_score = 0
         self._submit_turn: (
             Callable[
-                [str, str, int, tuple[tuple[str, str], ...]],
+                [
+                    str,
+                    str,
+                    int,
+                    tuple[tuple[str, str], ...],
+                    GameContext | None,
+                ],
                 Future[GeminiReply],
             ]
             | None
@@ -53,6 +59,8 @@ class InteractionScreen:
         self._history_scroll = 0
         self._conversation_day = 1
         self._status = ""
+        game_context = self._build_game_context(character)
+
 
     @property
     def is_conversation(self) -> bool:
@@ -81,6 +89,7 @@ class InteractionScreen:
         self._input_text = ""
         self._history = []
         self._status = ""
+        self._game_context = None
 
     def handle_event(self, event: pygame.event.Event) -> None:
         if self._conversation_character is not None:
@@ -104,6 +113,7 @@ class InteractionScreen:
         apply_relationship_delta: Callable[[str, int], int],
         destination: ScreenId,
         day_number: int = 1,
+        game_context: GameContext | None = None,
     ) -> None:
         if character.lower() not in ("elf", "fae"):
             raise ValueError(f"Unsupported conversation character: {character!r}")
@@ -128,6 +138,7 @@ class InteractionScreen:
         self._history = self._history_by_character.setdefault(character_key, [])
         self._history_scroll = 0
         self._conversation_day = day_number
+        self._game_context = game_context
         self._status = "Type a message and press Enter to talk."
         pygame.key.start_text_input()
 
@@ -192,6 +203,7 @@ class InteractionScreen:
                 message,
                 self._relationship_score,
                 previous_messages,
+                self._game_context,
             )
         except Exception as error:
             self._show_gemini_fallback(error)
