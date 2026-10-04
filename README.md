@@ -21,19 +21,19 @@ Approach the Elf and the Fae and press **E** to talk. The task list beside the
 day count tracks both conversations and reveals their daily requests. Tasks
 remain visibly locked until you have talked to both characters that day.
 Interact with the day's object (the hammer on day 2, net on day 3, or garden on
-day 4) to choose an available task. The roof-repair choice opens the jigsaw
-task scaffold, ready for puzzle mechanics to be added; the other unfinished
-tasks open their own task placeholders. The gate remains a solid obstacle and
-does nothing when interacted with.
+day 4) to choose an available task. The roof-repair choice opens a 3-by-3
+square-piece jigsaw: drag each piece from the tray into the matching roof slot,
+using the gradient reference as a guide. The other unfinished tasks open their
+own task placeholders. The gate remains a solid obstacle and does nothing when
+interacted with.
 
 To end any day, complete every item in the task list, approach the bedroll box
 beside the house, press **E**, then click **Sleep** to confirm. Day 1 requires
 both conversations; days 2 and 3 also require both assigned tasks; day 4
 requires the garden maze and is the final day. After sleeping on day 4, the
-story ends at the epilogue; there is no fifth day. Until the actual jigsaw,
-pond, and maze mechanics are
-implemented, their task screens expose an explicit temporary completion
-button. On days 2 and 3, choosing one of the two tasks for the hammer or net
+story ends at the epilogue; there is no fifth day. Until the pond and maze
+mechanics are implemented, their task screens expose an explicit temporary
+completion button. On days 2 and 3, choosing one of the two tasks for the hammer or net
 locks out the other path; the unchosen request is marked **FAILED**.
 Authored interaction events play when their trigger is available. When no
 interaction event is authored, speaking to the Elf or Fae opens a Gemini chat.

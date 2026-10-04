@@ -71,7 +71,7 @@ class TaskChoicesTests(unittest.TestCase):
         self.assertIs(self.screen.update(0), ScreenId.GROVE)
         self.assertEqual(self.screen.consume_selected_option(), "break")
 
-    def test_app_routes_roof_repair_choice_to_jigsaw_scaffold(self) -> None:
+    def test_app_routes_roof_repair_choice_to_jigsaw_and_completes_task(self) -> None:
         grove = GroveScreen((800, 600))
         grove.begin_day(2)
         grove.mark_character_talked("elf")
@@ -122,13 +122,32 @@ class TaskChoicesTests(unittest.TestCase):
         self.assertIs(app.current_screen_id, ScreenId.JIGSAW)
         self.assertEqual(jigsaw.task_id, "repair_roof")
         jigsaw.draw(pygame.Surface((800, 600)))
-        jigsaw.handle_event(
-            pygame.event.Event(
-                pygame.MOUSEBUTTONDOWN,
-                button=pygame.BUTTON_LEFT,
-                pos=jigsaw.complete_rect.center,
+        for target, piece in enumerate(range(len(jigsaw.board))):
+            if jigsaw.board[target] == piece:
+                continue
+            if piece in jigsaw.tray:
+                source_index = jigsaw.tray.index(piece)
+                source_rect = jigsaw.tray_slot_rects[source_index]
+            else:
+                source_index = jigsaw.board.index(piece)
+                source_rect = jigsaw.board_slot_rects[source_index]
+            jigsaw.handle_event(
+                pygame.event.Event(
+                    pygame.MOUSEBUTTONDOWN,
+                    button=pygame.BUTTON_LEFT,
+                    pos=source_rect.center,
+                )
             )
-        )
+            jigsaw.handle_event(
+                pygame.event.Event(
+                    pygame.MOUSEBUTTONUP,
+                    button=pygame.BUTTON_LEFT,
+                    pos=jigsaw.board_slot_rects[target].center,
+                )
+            )
+            if jigsaw.completed:
+                break
+        self.assertEqual(jigsaw.board, list(range(len(jigsaw.board))))
         app.update(0)
         self.assertIn("repair_roof", grove.completed_tasks)
 
@@ -145,6 +164,48 @@ class TaskChoicesTests(unittest.TestCase):
         self.assertNotIn("break_gate_lock", grove.completed_tasks)
         self.assertIn("break_gate_lock", grove.failed_tasks)
         self.assertTrue(grove.all_daily_tasks_complete)
+
+    def test_jigsaw_can_be_cancelled_without_completing_task(self) -> None:
+        jigsaw = JigsawScreen((800, 600))
+        jigsaw.start("repair_roof", "Repair the roof", "Swap the tiles.")
+        jigsaw.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+
+        self.assertIs(jigsaw.update(0), ScreenId.GROVE)
+        self.assertIsNone(jigsaw.consume_completed_task_id())
+
+    def test_jigsaw_pieces_drag_from_tray_into_board_slots(self) -> None:
+        jigsaw = JigsawScreen((800, 600))
+        jigsaw.start("repair_roof", "Repair the roof", "Drag the tiles.")
+        piece = jigsaw.tray[0]
+        self.assertIsNotNone(piece)
+        target = piece
+
+        jigsaw.handle_event(
+            pygame.event.Event(
+                pygame.MOUSEBUTTONDOWN,
+                button=pygame.BUTTON_LEFT,
+                pos=jigsaw.tray_slot_rects[0].center,
+            )
+        )
+        jigsaw.handle_event(
+            pygame.event.Event(
+                pygame.MOUSEMOTION,
+                pos=jigsaw.board_slot_rects[target].center,
+                rel=(0, 0),
+                buttons=(1, 0, 0),
+            )
+        )
+        jigsaw.handle_event(
+            pygame.event.Event(
+                pygame.MOUSEBUTTONUP,
+                button=pygame.BUTTON_LEFT,
+                pos=jigsaw.board_slot_rects[target].center,
+            )
+        )
+
+        self.assertEqual(jigsaw.board[target], piece)
+        self.assertIsNone(jigsaw.tray[0])
+        self.assertEqual(jigsaw.placed_count, 1)
 
     def test_temporary_task_can_be_completed_or_cancelled(self) -> None:
         activity = TaskActivityScreen((800, 600))

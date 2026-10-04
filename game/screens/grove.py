@@ -21,6 +21,7 @@ class GroveScreen:
         "player": (92, 122),
         "elf": (78, 140),
         "fae": (92, 148),
+        "house": (150, 300),
         "broken_house": (150, 300),
     }
     GATE_SPRITE_SIZE = (220, 190)
@@ -56,6 +57,7 @@ class GroveScreen:
         self._completed_tasks: set[str] = set()
         self._chosen_tasks: dict[str, str] = {}
         self._failed_tasks: set[str] = set()
+        self._roof_repaired = False
         self.day_number = 1
         self._message = "Explore the grove. Approach something and press E."
         self._message_seconds = 0.0
@@ -69,6 +71,7 @@ class GroveScreen:
             "player": "Main character.png",
             "elf": "Elf.png",
             "fae": "TheFae.png",
+            "house": "HouseofElf.png",
             "broken_house": "TheBrokenHouse.png",
         }
         assets: dict[str, pygame.Surface] = {}
@@ -268,7 +271,7 @@ class GroveScreen:
             (72, 89, 53),
             house.inflate(round(50 * self.scale_x), round(42 * self.scale_y)),
         )
-        house_sprite = self.sprites["broken_house"]
+        house_sprite = self.current_house_sprite
         background.blit(
             house_sprite,
             (house.centerx - house_sprite.get_width() // 2, house.bottom - house_sprite.get_height()),
@@ -562,6 +565,14 @@ class GroveScreen:
         if task_id in self._completed_tasks:
             raise ValueError(f"Task {task_id!r} is already complete.")
         self._completed_tasks.add(task_id)
+        if task_id == "repair_roof":
+            self._roof_repaired = True
+            self.background = self._build_background()
+
+    @property
+    def current_house_sprite(self) -> pygame.Surface:
+        sprite_name = "broken_house" if self._roof_repaired else "house"
+        return self.sprites[sprite_name]
 
     @property
     def sleep_confirmation_open(self) -> bool:
@@ -796,7 +807,7 @@ class GroveScreen:
             if name == "Gate":
                 continue
             if name == "House":
-                sprite = self.sprites["broken_house"]
+                sprite = self.current_house_sprite
                 label_position = (rect.centerx, rect.bottom - sprite.get_height())
             else:
                 label_position = rect.midtop

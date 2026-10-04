@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from concurrent.futures import Future
+from dataclasses import dataclass
 from typing import Callable
 
 import pygame
@@ -12,6 +13,13 @@ from game.screens.screen import ScreenId
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class ConversationMessage:
+    day: int
+    speaker: str
+    text: str
 
 
 class InteractionScreen:
@@ -40,7 +48,10 @@ class InteractionScreen:
         self._future: Future[GeminiReply] | None = None
         self._close_requested = False
         self._input_text = ""
-        self._history: list[tuple[str, str]] = []
+        self._history_by_character: dict[str, list[ConversationMessage]] = {}
+        self._history: list[ConversationMessage] = []
+        self._history_scroll = 0
+        self._conversation_day = 1
         self._status = ""
 
     @property
@@ -92,6 +103,7 @@ class InteractionScreen:
         ],
         apply_relationship_delta: Callable[[str, int], int],
         destination: ScreenId,
+        day_number: int = 1,
     ) -> None:
         if character.lower() not in ("elf", "fae"):
             raise ValueError(f"Unsupported conversation character: {character!r}")
@@ -112,7 +124,10 @@ class InteractionScreen:
         self._future = None
         self._close_requested = False
         self._input_text = ""
-        self._history = []
+        character_key = character.lower()
+        self._history = self._history_by_character.setdefault(character_key, [])
+        self._history_scroll = 0
+        self._conversation_day = day_number
         self._status = "Type a message and press Enter to talk."
         pygame.key.start_text_input()
 
@@ -128,6 +143,12 @@ class InteractionScreen:
             self._input_text = (
                 self._input_text + event.text
             )[: self.MAX_INPUT_LENGTH]
+            return
+        if event.type == pygame.MOUSEWHEEL:
+            self._history_scroll = min(
+                max(0, self._history_scroll + event.y),
+                max(0, len(self._history) - 1),
+            )
             return
         if event.type != pygame.KEYDOWN:
             return
@@ -150,11 +171,21 @@ class InteractionScreen:
         character = self._conversation_character
         if character is None or self._submit_turn is None:
             raise RuntimeError("Conversation is not configured.")
-        previous_messages = tuple(self._history[-12:])
-        self._history.append(("You", message))
+        previous_messages = tuple(
+            (entry.speaker, entry.text) for entry in self._history[-12:]
+        )
+        self._history.append(
+            ConversationMessage(self._conversation_day, "You", message)
+        )
+        self._history_scroll = 0
         self._conversation_has_spoken = True
         self._input_text = ""
-        self._status = "Waiting for Gemini..."
+        if self._relationship_score <= -6:
+            self._status = (
+                f"The {character} grimaces while thinking..."
+            )
+        else:
+            self._status = f"The {character} is thinking..."
         try:
             self._future = self._submit_turn(
                 character.lower(),
@@ -176,8 +207,13 @@ class InteractionScreen:
             exc_info=(type(error), error, error.__traceback__),
         )
         self._history.append(
-            (character, f"The {character.lower()} has nothing to say to that.")
+            ConversationMessage(
+                self._conversation_day,
+                character,
+                f"The {character.lower()} has nothing to say to that.",
+            )
         )
+        self._history_scroll = 0
         self._status = "The conversation can continue."
         self._close_requested = False
 
@@ -229,7 +265,10 @@ class InteractionScreen:
                 character = self._conversation_character
                 if character is None or self._apply_relationship_delta is None:
                     raise RuntimeError("Conversation lost its relationship handler.")
-                self._history.append((character, reply.text))
+                self._history.append(
+                    ConversationMessage(self._conversation_day, character, reply.text)
+                )
+                self._history_scroll = 0
                 try:
                     self._relationship_score = self._apply_relationship_delta(
                         character.lower(),
@@ -368,10 +407,13 @@ class InteractionScreen:
         pygame.draw.rect(surface, (24, 39, 31), transcript_rect, border_radius=12)
         pygame.draw.rect(surface, (111, 133, 105), transcript_rect, width=1, border_radius=12)
         surface.set_clip(transcript_rect.inflate(-padding // 2, -padding // 2))
+        history_end = len(self._history) - self._history_scroll
+        visible_history = self._history[:history_end]
         y = transcript_rect.bottom - padding // 2
-        for speaker, message in reversed(self._history):
+        for index in range(len(visible_history) - 1, -1, -1):
+            entry = visible_history[index]
             wrapped = self._wrap_text(
-                message,
+                entry.text,
                 text_font,
                 transcript_rect.width - 2 * padding,
             )
@@ -380,8 +422,8 @@ class InteractionScreen:
             y -= block_height
             if y + block_height < transcript_rect.top:
                 break
-            color = (237, 212, 146) if speaker == "You" else (182, 213, 179)
-            label = hint_font.render(speaker, True, color)
+            color = (237, 212, 146) if entry.speaker == "You" else (182, 213, 179)
+            label = hint_font.render(entry.speaker, True, color)
             surface.blit(label, (transcript_rect.left + padding, y))
             text_y = y + hint_font.get_linesize()
             for line in wrapped:
@@ -389,6 +431,37 @@ class InteractionScreen:
                 surface.blit(rendered, (transcript_rect.left + padding, text_y))
                 text_y += line_height
             y -= 10
+            if index > 0 and visible_history[index - 1].day != entry.day:
+                divider_height = hint_font.get_linesize() + 12
+                y -= divider_height
+                if y + divider_height < transcript_rect.top:
+                    break
+                day_label = hint_font.render(
+                    f"Day {entry.day}",
+                    True,
+                    (183, 198, 166),
+                )
+                label_rect = day_label.get_rect(
+                    center=(
+                        transcript_rect.centerx,
+                        y + day_label.get_height() // 2,
+                    )
+                )
+                pygame.draw.line(
+                    surface,
+                    (111, 133, 105),
+                    (transcript_rect.left + padding, label_rect.centery),
+                    (label_rect.left - 8, label_rect.centery),
+                    1,
+                )
+                pygame.draw.line(
+                    surface,
+                    (111, 133, 105),
+                    (label_rect.right + 8, label_rect.centery),
+                    (transcript_rect.right - padding, label_rect.centery),
+                    1,
+                )
+                surface.blit(day_label, label_rect)
         surface.set_clip(None)
 
         pygame.draw.rect(surface, (24, 39, 31), input_rect, border_radius=12)
@@ -396,7 +469,16 @@ class InteractionScreen:
         status = self._status
         status_font_color = (238, 174, 134) if "failed" in status.lower() or "could not" in status.lower() else (183, 198, 166)
         status_label = hint_font.render(status, True, status_font_color)
-        surface.blit(status_label, (input_rect.left + padding, input_rect.top + padding // 2))
+        status_x = input_rect.left + padding
+        status_y = input_rect.top + padding // 2
+        if self._future is not None:
+            face_radius = max(10, round(14 * scale))
+            face_center = (
+                status_x + face_radius,
+                status_y + status_label.get_height() // 2,
+            )
+            status_x += face_radius * 2 + 10
+        surface.blit(status_label, (status_x, status_y))
         input_lines = self._wrap_text(
             self._input_text or "Type your message here...",
             text_font,
@@ -409,7 +491,7 @@ class InteractionScreen:
             surface.blit(rendered, (input_rect.left + padding, input_y))
             input_y += rendered.get_height()
         hint = hint_font.render(
-            "Enter: send   Shift+Enter: new line   Esc: return to grove",
+            "Enter: send   Shift+Enter: new line   Esc: return   Scroll: history",
             True,
             (175, 190, 165),
         )

@@ -126,6 +126,83 @@ class DayFlowTests(unittest.TestCase):
         self.assertEqual(app.day_number, MAX_DAYS)
         self.assertEqual(app._completed_event_ids, set())
 
+    def test_escape_opens_quit_confirmation_without_closing_game(self) -> None:
+        forwarded_events = []
+        app = GameApp.__new__(GameApp)
+        app.current_screen_id = ScreenId.TITLE
+        app.screens = {
+            ScreenId.TITLE: SimpleNamespace(
+                handle_event=forwarded_events.append,
+            )
+        }
+        app.running = True
+        app.surface = pygame.Surface((800, 600))
+        app._quit_confirmation_open = False
+
+        app.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+
+        self.assertTrue(app.running)
+        self.assertTrue(app._quit_confirmation_open)
+        self.assertEqual(forwarded_events, [])
+
+    def test_quit_confirmation_can_be_cancelled_or_confirmed_by_keyboard(self) -> None:
+        app = GameApp.__new__(GameApp)
+        app.current_screen_id = ScreenId.TITLE
+        app.screens = {
+            ScreenId.TITLE: SimpleNamespace(
+                handle_event=lambda _event: self.fail(
+                    "Confirmation input should not reach the underlying screen"
+                ),
+            )
+        }
+        app.running = True
+        app.surface = pygame.Surface((800, 600))
+        app._quit_confirmation_open = True
+
+        app.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_n))
+        self.assertTrue(app.running)
+        self.assertFalse(app._quit_confirmation_open)
+
+        app._quit_confirmation_open = True
+        app.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_y))
+        self.assertFalse(app.running)
+        self.assertTrue(app._quit_confirmation_open)
+
+    def test_quit_confirmation_buttons_cancel_or_quit(self) -> None:
+        app = GameApp.__new__(GameApp)
+        app.current_screen_id = ScreenId.TITLE
+        app.screens = {
+            ScreenId.TITLE: SimpleNamespace(
+                handle_event=lambda _event: self.fail(
+                    "Confirmation input should not reach the underlying screen"
+                ),
+            )
+        }
+        app.running = True
+        app.surface = pygame.Surface((800, 600))
+        app._quit_confirmation_open = True
+        _, yes_button, no_button = app._quit_confirmation_rects()
+
+        app.handle_event(
+            pygame.event.Event(
+                pygame.MOUSEBUTTONDOWN,
+                button=1,
+                pos=no_button.center,
+            )
+        )
+        self.assertTrue(app.running)
+        self.assertFalse(app._quit_confirmation_open)
+
+        app._quit_confirmation_open = True
+        app.handle_event(
+            pygame.event.Event(
+                pygame.MOUSEBUTTONDOWN,
+                button=1,
+                pos=yes_button.center,
+            )
+        )
+        self.assertFalse(app.running)
+
     def test_day_one_sleep_dialogue_requires_bedroll_confirmation(self) -> None:
         title = _OneShotScreen(ScreenId.INTERACTION)
         grove = _GroveRequestScreen()

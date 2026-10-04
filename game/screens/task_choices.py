@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import random
+
 import pygame
 
 from game.screens.screen import ScreenId
@@ -259,57 +261,298 @@ class TaskActivityScreen:
 
 
 class JigsawScreen(TaskActivityScreen):
-    """Roof-repair task entry point; the puzzle board can replace this scaffold."""
+    """Drag gradient roof tiles from the tray into their matching board slots."""
+
+    GRID_SIZE = 3
+    GRADIENT_CORNERS = (
+        (120, 48, 45),
+        (245, 176, 79),
+        (75, 43, 48),
+        (184, 83, 48),
+    )
 
     def start(self, task_id: str, title: str, description: str) -> None:
         super().start(task_id, title, description)
-        self._update_board_layout()
+        self.tray: list[int | None] = list(range(self.GRID_SIZE * self.GRID_SIZE))
+        random.shuffle(self.tray)
+        if self.tray == list(range(len(self.tray))):
+            self.tray[0], self.tray[1] = self.tray[1], self.tray[0]
+        self.board: list[int | None] = [None] * len(self.tray)
+        self.completed = False
+        self._drag_piece: int | None = None
+        self._drag_source: tuple[str, int] | None = None
+        self._drag_position: tuple[int, int] | None = None
+        self.placed_count = 0
+        self._update_jigsaw_layout()
 
     def resize(self, size: tuple[int, int]) -> None:
-        super().resize(size)
-        self._update_board_layout()
+        self.size = size
+        self._update_jigsaw_layout()
 
-    def _update_board_layout(self) -> None:
+    def _update_jigsaw_layout(self) -> None:
         width, height = self.size
+        cell_size = min(round(width * 0.1), round(height * 0.14), 120)
+        cell_size = max(1, cell_size)
+        board_size = cell_size * self.GRID_SIZE
+        gap = max(2, cell_size // 18)
+        tray_size = board_size + gap * (self.GRID_SIZE - 1)
+        preview_size = cell_size * 4 // 3
+        panel_gap = max(12, cell_size // 4)
+        total_width = preview_size + panel_gap + tray_size + panel_gap + board_size
+        left = max(8, (width - total_width) // 2)
+        board_left = left + preview_size + panel_gap + tray_size + panel_gap
+        tray_left = left + preview_size + panel_gap
+        board_top = max(8, (height - board_size) // 2 + round(height * 0.035))
+
         self.board_rect = pygame.Rect(
-            width // 2 - round(width * 0.2),
-            round(height * 0.35),
-            round(width * 0.4),
-            round(height * 0.25),
+            board_left,
+            board_top,
+            board_size,
+            board_size,
+        )
+        self.board_slot_rects = tuple(
+            pygame.Rect(
+                board_left + column * cell_size,
+                board_top + row * cell_size,
+                cell_size,
+                cell_size,
+            )
+            for row in range(self.GRID_SIZE)
+            for column in range(self.GRID_SIZE)
+        )
+        self.tray_slot_rects = tuple(
+            pygame.Rect(
+                tray_left + column * (cell_size + gap),
+                board_top + row * (cell_size + gap),
+                cell_size,
+                cell_size,
+            )
+            for row in range(self.GRID_SIZE)
+            for column in range(self.GRID_SIZE)
+        )
+        self.tray_rect = pygame.Rect(tray_left, board_top, tray_size, tray_size)
+        self.preview_rect = pygame.Rect(
+            left + (preview_size - preview_size) // 2,
+            board_top + (board_size - preview_size) // 2,
+            preview_size,
+            preview_size,
+        )
+        self._make_gradient_art(cell_size, board_size)
+
+    def handle_event(self, event: pygame.event.Event) -> None:
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self._pending_screen = ScreenId.GROVE
+            return
+        if self.completed:
+            return
+
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == pygame.BUTTON_LEFT:
+            self._pick_up_piece(event.pos)
+        elif event.type == pygame.MOUSEMOTION and self._drag_piece is not None:
+            self._drag_position = event.pos
+        elif (
+            event.type == pygame.MOUSEBUTTONUP
+            and event.button == pygame.BUTTON_LEFT
+            and self._drag_piece is not None
+        ):
+            self._drop_piece(event.pos)
+
+    def _pick_up_piece(self, position: tuple[int, int]) -> None:
+        for index, rect in enumerate(self.board_slot_rects):
+            piece = self.board[index]
+            if piece is not None and rect.collidepoint(position):
+                self.board[index] = None
+                self._begin_drag(piece, ("board", index), position)
+                return
+        for index, rect in enumerate(self.tray_slot_rects):
+            piece = self.tray[index]
+            if piece is not None and rect.collidepoint(position):
+                self.tray[index] = None
+                self._begin_drag(piece, ("tray", index), position)
+                return
+
+    def _begin_drag(
+        self,
+        piece: int,
+        source: tuple[str, int],
+        position: tuple[int, int],
+    ) -> None:
+        self._drag_piece = piece
+        self._drag_source = source
+        self._drag_position = position
+
+    def _drop_piece(self, position: tuple[int, int]) -> None:
+        piece = self._drag_piece
+        source = self._drag_source
+        if piece is None or source is None:
+            return
+
+        destination = self._slot_at(position, self.board_slot_rects)
+        destination_kind = "board"
+        if destination is None:
+            destination = self._slot_at(position, self.tray_slot_rects)
+            destination_kind = "tray"
+
+        if destination is None:
+            self._put_in_slot(source, piece)
+        else:
+            target_slots = self.board if destination_kind == "board" else self.tray
+            displaced = target_slots[destination]
+            target_slots[destination] = piece
+            if displaced is not None:
+                self._put_in_slot(source, displaced)
+
+        self._drag_piece = None
+        self._drag_source = None
+        self._drag_position = None
+        self.placed_count = sum(piece is not None for piece in self.board)
+        if self.board == list(range(len(self.board))):
+            self.completed = True
+            self._complete_task()
+
+    @staticmethod
+    def _slot_at(
+        position: tuple[int, int],
+        rects: tuple[pygame.Rect, ...],
+    ) -> int | None:
+        return next(
+            (index for index, rect in enumerate(rects) if rect.collidepoint(position)),
+            None,
+        )
+
+    def _put_in_slot(self, source: tuple[str, int], piece: int) -> None:
+        kind, index = source
+        slots = self.board if kind == "board" else self.tray
+        slots[index] = piece
+
+    def _make_gradient_art(self, cell_size: int, board_size: int) -> None:
+        self._tile_surfaces: list[pygame.Surface] = []
+        guide = pygame.Surface((board_size, board_size))
+        for y in range(board_size):
+            global_y = y / max(1, board_size - 1)
+            for x in range(board_size):
+                global_x = x / max(1, board_size - 1)
+                guide.set_at((x, y), self._gradient_color(global_x, global_y))
+        for index in range(self.GRID_SIZE * self.GRID_SIZE):
+            row, column = divmod(index, self.GRID_SIZE)
+            tile_rect = pygame.Rect(
+                column * cell_size,
+                row * cell_size,
+                cell_size,
+                cell_size,
+            )
+            self._tile_surfaces.append(guide.subsurface(tile_rect).copy())
+        self._guide_surface = pygame.transform.smoothscale(
+            guide,
+            self.preview_rect.size,
+        )
+
+    @classmethod
+    def _gradient_color(cls, x: float, y: float) -> tuple[int, int, int]:
+        top_left, top_right, bottom_left, bottom_right = cls.GRADIENT_CORNERS
+        return tuple(
+            round(
+                (1 - y) * ((1 - x) * top + x * top_right_value)
+                + y * ((1 - x) * bottom + x * bottom_right_value)
+            )
+            for top, top_right_value, bottom, bottom_right_value in zip(
+                top_left,
+                top_right,
+                bottom_left,
+                bottom_right,
+            )
         )
 
     def draw(self, surface: pygame.Surface) -> None:
         surface.fill((18, 34, 31))
         title_font = pygame.font.Font(None, max(34, int(min(self.size) * 0.075)))
-        text_font = pygame.font.Font(None, max(21, int(min(self.size) * 0.035)))
+        text_font = pygame.font.Font(None, max(18, int(min(self.size) * 0.032)))
         title = title_font.render(self.title, True, (238, 226, 190))
-        surface.blit(title, title.get_rect(center=(self.size[0] // 2, self.size[1] // 5)))
-        description = text_font.render(self.description, True, (182, 199, 171))
-        surface.blit(
-            description,
-            description.get_rect(center=(self.size[0] // 2, self.size[1] * 2 // 7)),
-        )
-        pygame.draw.rect(surface, (38, 54, 44), self.board_rect, border_radius=12)
-        pygame.draw.rect(surface, (177, 163, 117), self.board_rect, 3, border_radius=12)
-        font = pygame.font.Font(None, max(20, int(min(self.size) * 0.033)))
-        label = font.render("Jigsaw board", True, (197, 204, 178))
-        surface.blit(label, label.get_rect(center=self.board_rect.center))
-        pygame.draw.rect(surface, (53, 75, 57), self.complete_rect, border_radius=10)
-        pygame.draw.rect(
-            surface,
-            (196, 179, 122),
-            self.complete_rect,
-            2,
-            border_radius=10,
-        )
-        complete = text_font.render(
-            "Finish roof repair (temporary scaffold)",
+        surface.blit(title, title.get_rect(center=(self.size[0] // 2, int(self.size[1] * 0.09))))
+        instruction = text_font.render(
+            "Drag each square into the matching spot. Use the gradient as your guide.",
             True,
-            (239, 233, 204),
+            (182, 199, 171),
         )
-        surface.blit(complete, complete.get_rect(center=self.complete_rect.center))
-        hint = text_font.render("Press Esc to leave without completing.", True, (145, 165, 145))
+        surface.blit(
+            instruction,
+            instruction.get_rect(center=(self.size[0] // 2, int(self.size[1] * 0.18))),
+        )
+        preview_font = pygame.font.Font(None, max(17, int(min(self.size) * 0.028)))
+        self._draw_label(surface, preview_font, "REFERENCE", self.preview_rect.centerx)
+        self._draw_label(surface, preview_font, "LOOSE PIECES", self.tray_rect.centerx)
+        self._draw_label(surface, preview_font, "ROOF", self.board_rect.centerx)
+        surface.blit(self._guide_surface, self.preview_rect)
+        pygame.draw.rect(surface, (232, 214, 163), self.preview_rect, 2)
+        self._draw_grid_lines(surface, self.preview_rect)
+        self._draw_tray(surface)
+        self._draw_board(surface)
+        self._draw_dragged_piece(surface)
+        hint_text = f"{self.placed_count} / {len(self.board)} pieces placed  |  Esc to leave"
+        hint = preview_font.render(hint_text, True, (145, 165, 145))
         surface.blit(
             hint,
-            hint.get_rect(center=(self.size[0] // 2, self.size[1] * 4 // 5)),
+            hint.get_rect(center=(self.size[0] // 2, self.size[1] * 9 // 10)),
         )
+
+    @staticmethod
+    def _draw_label(
+        surface: pygame.Surface,
+        font: pygame.font.Font,
+        text: str,
+        center_x: int,
+    ) -> None:
+        label = font.render(text, True, (197, 204, 178))
+        surface.blit(label, label.get_rect(center=(center_x, max(16, surface.get_height() * 0.29 - 36))))
+
+    def _draw_grid_lines(self, surface: pygame.Surface, rect: pygame.Rect) -> None:
+        for index in range(1, self.GRID_SIZE):
+            x = rect.left + rect.width * index // self.GRID_SIZE
+            y = rect.top + rect.height * index // self.GRID_SIZE
+            pygame.draw.line(surface, (245, 218, 167), (x, rect.top), (x, rect.bottom), 1)
+            pygame.draw.line(surface, (245, 218, 167), (rect.left, y), (rect.right, y), 1)
+
+    def _draw_tray(self, surface: pygame.Surface) -> None:
+        pygame.draw.rect(surface, (33, 49, 42), self.tray_rect, border_radius=8)
+        for index, rect in enumerate(self.tray_slot_rects):
+            pygame.draw.rect(surface, (52, 66, 55), rect, border_radius=4)
+            piece = self.tray[index]
+            if piece is not None:
+                self._draw_piece(surface, piece, rect)
+
+    def _draw_board(self, surface: pygame.Surface) -> None:
+        pygame.draw.rect(surface, (36, 52, 43), self.board_rect, border_radius=5)
+        for index, rect in enumerate(self.board_slot_rects):
+            piece = self.board[index]
+            if piece is None:
+                pygame.draw.rect(surface, (26, 40, 35), rect)
+                pygame.draw.rect(surface, (106, 126, 101), rect, 2)
+                pygame.draw.line(
+                    surface,
+                    (58, 79, 65),
+                    rect.topleft,
+                    rect.bottomright,
+                    1,
+                )
+            else:
+                self._draw_piece(surface, piece, rect)
+        pygame.draw.rect(surface, (183, 168, 125), self.board_rect, 2)
+
+    def _draw_piece(
+        self,
+        surface: pygame.Surface,
+        piece: int,
+        rect: pygame.Rect,
+    ) -> None:
+        surface.blit(self._tile_surfaces[piece], rect)
+        pygame.draw.rect(surface, (63, 48, 39), rect, 2)
+
+    def _draw_dragged_piece(self, surface: pygame.Surface) -> None:
+        if self._drag_piece is None or self._drag_position is None:
+            return
+        cell_size = self.board_slot_rects[0].width
+        rect = pygame.Rect(0, 0, cell_size, cell_size)
+        rect.center = self._drag_position
+        rect.inflate_ip(6, 6)
+        surface.blit(self._tile_surfaces[self._drag_piece], rect)
+        pygame.draw.rect(surface, (250, 220, 159), rect, 3)

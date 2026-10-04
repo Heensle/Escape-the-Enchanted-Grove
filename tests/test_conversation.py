@@ -16,7 +16,7 @@ from game.dialogue.gemini import (
     relationship_response_style,
 )
 from game.dialogue.relationships import RelationshipStore
-from game.screens.interaction import InteractionScreen
+from game.screens.interaction import ConversationMessage, InteractionScreen
 from game.screens.screen import ScreenId
 from game.state import GardenEnding, HouseAction, Location
 from game.tasks.results import TaskOutcome, TaskResult
@@ -297,18 +297,61 @@ class ConversationScreenTests(unittest.TestCase):
             )
         )
         self.assertEqual(sent, [("fae", "Hello Fae", 2, ())])
-        self.assertEqual(screen._status, "Waiting for Gemini...")
+        self.assertEqual(screen._status, "The Fae is thinking...")
 
         future.set_result(GeminiReply("The Fae answers.", 1))
         self.assertIsNone(screen.update(0))
         self.assertEqual(stored_scores, [("fae", 1)])
         self.assertEqual(screen._relationship_score, 3)
-        self.assertEqual(screen._history[-1], ("Fae", "The Fae answers."))
+        self.assertEqual(
+            screen._history[-1],
+            ConversationMessage(1, "Fae", "The Fae answers."),
+        )
         screen.draw(pygame.Surface((800, 600)))
 
         screen.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
         self.assertIs(screen.update(0), ScreenId.GROVE)
         self.assertFalse(screen.is_conversation)
+
+    def test_pending_reply_prompt_matches_relationship_mood(self) -> None:
+        screen = InteractionScreen((800, 600))
+
+        def submit(
+            _character: str,
+            _message: str,
+            _score: int,
+            _history: tuple[tuple[str, str], ...],
+        ) -> Future[GeminiReply]:
+            return Future()
+
+        def save_delta(_character: str, delta: int) -> int:
+            return delta
+
+        cases = (
+            ("elf", -6, "The Elf grimaces while thinking..."),
+            ("fae", -5, "The Fae is thinking..."),
+            ("elf", 21, "The Elf is thinking..."),
+        )
+        for character, score, expected_status in cases:
+            with self.subTest(character=character, score=score):
+                screen.start_conversation(
+                    character,
+                    score,
+                    submit,
+                    save_delta,
+                    ScreenId.GROVE,
+                )
+                screen.handle_event(pygame.event.Event(pygame.TEXTINPUT, text="Hello"))
+                screen.handle_event(
+                    pygame.event.Event(
+                        pygame.KEYDOWN,
+                        key=pygame.K_RETURN,
+                        mod=pygame.KMOD_NONE,
+                    )
+                )
+
+                self.assertEqual(screen._status, expected_status)
+                screen.draw(pygame.Surface((800, 600)))
 
     def test_failed_request_logs_error_and_shows_generic_character_reply(self) -> None:
         screen = InteractionScreen((800, 600))
@@ -345,7 +388,7 @@ class ConversationScreenTests(unittest.TestCase):
         self.assertTrue(any("service overloaded" in line for line in logs.output))
         self.assertEqual(
             screen._history[-1],
-            ("Elf", "The elf has nothing to say to that."),
+            ConversationMessage(1, "Elf", "The elf has nothing to say to that."),
         )
         self.assertEqual(screen._status, "The conversation can continue.")
         self.assertEqual(saved, [])
@@ -384,6 +427,79 @@ class ConversationScreenTests(unittest.TestCase):
         self.assertIs(screen.update(0), ScreenId.GROVE)
         self.assertEqual(saved, [("elf", 1)])
         self.assertFalse(screen.is_conversation)
+
+    def test_history_continues_across_days_and_can_scroll_to_older_messages(self) -> None:
+        screen = InteractionScreen((800, 600))
+        futures = [Future(), Future()]
+        sent: list[tuple[str, str, int, tuple[tuple[str, str], ...]]] = []
+
+        def submit(
+            character: str,
+            message: str,
+            score: int,
+            history: tuple[tuple[str, str], ...],
+        ) -> Future[GeminiReply]:
+            sent.append((character, message, score, history))
+            return futures[len(sent) - 1]
+
+        def save_delta(_character: str, delta: int) -> int:
+            return delta
+
+        screen.start_conversation(
+            "elf", 0, submit, save_delta, ScreenId.GROVE, day_number=1
+        )
+        screen.handle_event(pygame.event.Event(pygame.TEXTINPUT, text="Good morning"))
+        screen.handle_event(
+            pygame.event.Event(
+                pygame.KEYDOWN,
+                key=pygame.K_RETURN,
+                mod=pygame.KMOD_NONE,
+            )
+        )
+        futures[0].set_result(GeminiReply("A lovely day.", 1))
+        screen.update(0)
+        screen.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+        screen.update(0)
+
+        screen.start_conversation(
+            "elf", 1, submit, save_delta, ScreenId.GROVE, day_number=2
+        )
+        self.assertEqual(
+            screen._history,
+            [
+                ConversationMessage(1, "You", "Good morning"),
+                ConversationMessage(1, "Elf", "A lovely day."),
+            ],
+        )
+        screen.handle_event(pygame.event.Event(pygame.TEXTINPUT, text="Remember me?"))
+        screen.handle_event(
+            pygame.event.Event(
+                pygame.KEYDOWN,
+                key=pygame.K_RETURN,
+                mod=pygame.KMOD_NONE,
+            )
+        )
+
+        self.assertEqual(
+            sent[1],
+            (
+                "elf",
+                "Remember me?",
+                1,
+                (("You", "Good morning"), ("Elf", "A lovely day.")),
+            ),
+        )
+        futures[1].set_result(GeminiReply("Of course.", 1))
+        screen.update(0)
+        self.assertEqual(
+            screen._history[-1],
+            ConversationMessage(2, "Elf", "Of course."),
+        )
+        screen.handle_event(
+            pygame.event.Event(pygame.MOUSEWHEEL, y=1, x=0)
+        )
+        self.assertEqual(screen._history_scroll, 1)
+        screen.draw(pygame.Surface((800, 600)))
 
 
 class ConversationRoutingTests(unittest.TestCase):
@@ -429,6 +545,7 @@ class ConversationRoutingTests(unittest.TestCase):
             screen = InteractionScreen((800, 600))
             app = GameApp.__new__(GameApp)
             app.current_screen_id = ScreenId.GROVE
+            app.day_number = 1
             app.screens = {ScreenId.GROVE: grove, ScreenId.INTERACTION: screen}
             app.grove_screen = grove
             app.interaction_screen = screen
