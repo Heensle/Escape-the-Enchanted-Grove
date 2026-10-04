@@ -18,6 +18,7 @@ from game.tasks.daily import get_task, tasks_for_target
 
 class GameApp:
     DAY_FADE_SECONDS = 0.55
+    QUIT_DIALOG_SIZE = (440, 190)
 
     def __init__(self) -> None:
         pygame.init()
@@ -32,6 +33,7 @@ class GameApp:
         self._create_screens()
         self.current_screen_id = ScreenId.TITLE
         self.running = True
+        self._quit_confirmation_open = False
         self._completed_event_ids: set[str] = set()
         self._sleep_after_dialogue = False
         self._interaction_character: str | None = None
@@ -75,6 +77,9 @@ class GameApp:
         if event.type == pygame.QUIT:
             self.running = False
             return
+        if self._quit_confirmation_open:
+            self._handle_quit_confirmation_event(event)
+            return
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             if (
                 self.current_screen_id is ScreenId.INTERACTION
@@ -93,7 +98,7 @@ class GameApp:
             ):
                 self.current_screen.handle_event(event)
                 return
-            self.running = False
+            self._quit_confirmation_open = True
             return
         if (
             event.type == pygame.KEYDOWN
@@ -134,6 +139,7 @@ class GameApp:
                             submit_turn=self.gemini_service.submit_turn,
                             apply_relationship_delta=self.relationship_store.apply_delta,
                             destination=ScreenId.GROVE,
+                            day_number=self.day_number,
                         )
                         self.current_screen_id = ScreenId.INTERACTION
                     return
@@ -294,7 +300,70 @@ class GameApp:
             overlay = pygame.Surface(self.surface.get_size(), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, self._fade_alpha))
             self.surface.blit(overlay, (0, 0))
+        if self._quit_confirmation_open:
+            self._draw_quit_confirmation()
         pygame.display.flip()
+
+    def _handle_quit_confirmation_event(self, event: pygame.event.Event) -> None:
+        if event.type == pygame.KEYDOWN:
+            if event.key in (pygame.K_ESCAPE, pygame.K_n):
+                self._quit_confirmation_open = False
+            elif event.key in (pygame.K_RETURN, pygame.K_y):
+                self.running = False
+            return
+        if event.type != pygame.MOUSEBUTTONDOWN or event.button != 1:
+            return
+        _, yes_button, no_button = self._quit_confirmation_rects()
+        if yes_button.collidepoint(event.pos):
+            self.running = False
+        elif no_button.collidepoint(event.pos):
+            self._quit_confirmation_open = False
+
+    def _quit_confirmation_rects(
+        self,
+    ) -> tuple[pygame.Rect, pygame.Rect, pygame.Rect]:
+        width, height = self.surface.get_size()
+        dialog = pygame.Rect(0, 0, *self.QUIT_DIALOG_SIZE)
+        dialog.center = (width // 2, height // 2)
+        button_width = 140
+        button_height = 44
+        button_y = dialog.bottom - 64
+        yes_button = pygame.Rect(0, 0, button_width, button_height)
+        yes_button.center = (dialog.centerx - 82, button_y)
+        no_button = pygame.Rect(0, 0, button_width, button_height)
+        no_button.center = (dialog.centerx + 82, button_y)
+        return dialog, yes_button, no_button
+
+    def _draw_quit_confirmation(self) -> None:
+        overlay = pygame.Surface(self.surface.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 170))
+        self.surface.blit(overlay, (0, 0))
+
+        dialog, yes_button, no_button = self._quit_confirmation_rects()
+        pygame.draw.rect(self.surface, (24, 39, 31), dialog, border_radius=14)
+        pygame.draw.rect(
+            self.surface,
+            (177, 163, 115),
+            dialog,
+            width=2,
+            border_radius=14,
+        )
+        title_font = pygame.font.Font(None, 38)
+        hint_font = pygame.font.Font(None, 25)
+        title = title_font.render("Leave the grove?", True, (237, 212, 146))
+        title_rect = title.get_rect(center=(dialog.centerx, dialog.top + 48))
+        self.surface.blit(title, title_rect)
+
+        for button, label, color in (
+            (yes_button, "Yes, quit", (130, 74, 57)),
+            (no_button, "Keep playing", (63, 91, 65)),
+        ):
+            pygame.draw.rect(self.surface, color, button, border_radius=8)
+            rendered = hint_font.render(label, True, (242, 237, 219))
+            self.surface.blit(rendered, rendered.get_rect(center=button.center))
+
+        hint = hint_font.render("Y: quit    N or Esc: cancel", True, (183, 198, 166))
+        self.surface.blit(hint, hint.get_rect(center=(dialog.centerx, dialog.top + 90)))
 
     def _start_dialogue(self, trigger: str, destination: ScreenId) -> None:
         events = tuple(
