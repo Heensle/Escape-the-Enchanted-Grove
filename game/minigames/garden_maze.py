@@ -19,9 +19,9 @@ class GardenMaze:
         "###......##...#",
         "#v.#.##..#v...#",
         "#..#....##....#",
-        "#.##..v...#..#.#",
-        "#....#....#v...#",
-        "#E...#.......#.#",
+        "#.##..v..#..#.#",
+        "#....#...#v...#",
+        "#E...#......#.#",
         "###############",
     )
     VEGETABLES = ("Carrot", "Tomato", "Cabbage", "Beet")
@@ -47,7 +47,7 @@ class GardenMaze:
         image = pygame.image.load(str(asset_path))
         bounds = image.get_bounding_rect(min_alpha=8)
         if bounds.width == 0 or bounds.height == 0:
-            raise ValueError("Image asset has no visible pixels: Main character.png")
+            raise ValueError("Image asset has no visible pixels: TheMainCharacter.png")
         self._player_image = image.subsurface(bounds).copy()
         self.task_id = ""
         self.title = ""

@@ -86,6 +86,8 @@ class TaskChoicesTests(unittest.TestCase):
         pond_cleanup = PondCleanup((800, 600))
         app = GameApp.__new__(GameApp)
         app.day_number = 2
+        app._elf_task_count = 0
+        app._fae_task_count = 0
         app.current_screen_id = ScreenId.GROVE
         app.screens = {
             ScreenId.GROVE: grove,

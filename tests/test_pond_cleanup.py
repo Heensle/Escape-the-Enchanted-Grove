@@ -95,6 +95,8 @@ class PondCleanupTests(unittest.TestCase):
         grove.mark_character_talked("fae")
         app = GameApp.__new__(GameApp)
         app.day_number = 3
+        app._elf_task_count = 0
+        app._fae_task_count = 0
         app.current_screen_id = ScreenId.GROVE
         app.grove_screen = grove
         app.pond_cleanup_screen = self.game

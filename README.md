@@ -2,12 +2,27 @@
 
 ## Run
 
-Install the dependency and launch the game:
+Install the dependencies and launch the game:
 
 ```powershell
 python -m pip install -r requirements.txt
 python main.py
 ```
+
+## Python dependencies and imports
+
+Install third-party packages from the repository root with
+`python -m pip install -r requirements.txt`. The pip package names and Python
+import names are not always the same:
+
+```python
+import pygame                 # installed as pygame-ce
+from dotenv import load_dotenv  # installed as python-dotenv
+```
+
+Do not install a package named `dotenv`; the project uses `python-dotenv`.
+Standard-library modules such as `dataclasses` do not need to be installed
+separately.
 
 The title screen opens fullscreen. Select **Start Game** or press Enter to
 read the opening narration and enter the grove. Press Escape to quit; F11
@@ -36,8 +51,8 @@ the **arrow keys**, collect all four vegetables, then leave through the Elf's
 lower-left exit or the Fae's upper-right exit to deliver the harvest. The
 chosen character receives the garden-task relationship change.
 
-To end any day, complete every item in the task list, approach the bedroll box
-beside the house, press **E**, then click **Sleep** to confirm. Day 1 requires
+To end any day, complete every item in the task list, approach the hay for
+sleeping, press **E**, then click **Sleep** to confirm. Day 1 requires
 both conversations; days 2 and 3 also require both assigned tasks; day 4
 requires the garden maze and is the final day. After sleeping on day 4, the
 story ends at the epilogue; there is no fifth day. On days 2 and 3, choosing
@@ -48,6 +63,15 @@ interaction event is authored, speaking to the Elf or Fae opens a Gemini chat.
 
 The Grove uses the transparent character and broken-house PNGs in
 `assets_images/` as its player, Elf, Fae, and house art.
+Its scene background is `assets_images/BasicBackground .png`; the pond, gate,
+hammer, net, garden, and hay are painted into that image. Their hitboxes use
+the background's 2000-by-1125 logical coordinate space: adjust the `FEATURES`
+rectangles or `TOOLS` points in `game/screens/grove.py` to realign them. Feature
+rectangles also block movement, while tool points use `INTERACTION_RADIUS` for
+their interaction range. Two or more Elf choices switch the grove to
+`Positively_improved_background.png`; two or more Fae choices switch it to
+`NegativelyImpractedBackground.png`. Repairing the roof changes the house art
+from `Broken_House.png` to `Elf_House.png`.
 
 ## Conversing with the Elf and Fae
 

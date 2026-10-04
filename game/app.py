@@ -328,6 +328,10 @@ class GameApp:
             if completed_task_id is not None:
                 self.grove_screen.complete_task(completed_task_id)
                 self._record_completed_task_count(completed_task_id, garden_ending)
+                if garden_ending is not None:
+                    self.grove_screen.record_character_choice(
+                        garden_ending.name.lower()
+                    )
                 relationship_message = self._record_task_relationship(
                     completed_task_id,
                     TaskOutcome.COMPLETED,

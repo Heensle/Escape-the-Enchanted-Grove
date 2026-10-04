@@ -13,12 +13,9 @@ class GroveScreenTests(unittest.TestCase):
     def tearDown(self) -> None:
         pygame.quit()
 
-    def test_player_starts_in_middle_of_walkable_clearing(self) -> None:
+    def test_player_starts_in_walkable_clearing_without_nearby_interactables(self) -> None:
         self.assertTrue(self.grove.forest_bounds.contains(self.grove._player_rect()))
-        self.assertEqual(
-            self.grove.player_position,
-            pygame.Vector2(self.grove.world_size[0] / 2, self.grove.world_size[1] / 2),
-        )
+        self.assertIsNone(self.grove._nearest_interactable())
 
     def test_wasd_movement_updates_player_position(self) -> None:
         start = self.grove.player_position.copy()
@@ -49,6 +46,51 @@ class GroveScreenTests(unittest.TestCase):
 
         self.assertIsNone(self.grove.update(0))
         self.assertEqual(self.grove.consume_task_target(), "hammer")
+
+    def test_background_landmarks_have_aligned_interaction_regions(self) -> None:
+        self.assertEqual(self.grove.BASE_SIZE, (2000, 1125))
+        self.assertEqual(
+            self.grove.feature_rects["Pond"],
+            pygame.Rect(1245, 140, 525, 260),
+        )
+        self.assertEqual(
+            self.grove.feature_rects["House"],
+            pygame.Rect(230, 105, 260, 300),
+        )
+        self.assertEqual(
+            self.grove.feature_rects["Garden"],
+            pygame.Rect(1015, 590, 745, 165),
+        )
+        self.assertEqual(self.grove.character_positions["Elf"], (570, 300))
+        for name in ("Hammer", "Net", "Sleep"):
+            self.grove.player_position.update(self.grove.tool_positions[name])
+            self.assertEqual(self.grove._nearest_interactable()[0], name)
+
+    def test_two_elf_task_choices_switch_to_positive_background(self) -> None:
+        default_background = self.grove._background_images["default"]
+        self.grove.begin_day(2)
+        self.grove.mark_character_talked("elf")
+        self.grove.mark_character_talked("fae")
+        self.grove.choose_task("repair_roof")
+        self.assertIs(self.grove._background_image, default_background)
+
+        self.grove.begin_day(3)
+        self.grove.mark_character_talked("elf")
+        self.grove.mark_character_talked("fae")
+        self.grove.choose_task("clean_pond")
+        self.assertIs(self.grove._background_image, self.grove._background_images["elf"])
+
+    def test_two_fae_task_choices_switch_to_negative_background(self) -> None:
+        self.grove.begin_day(2)
+        self.grove.mark_character_talked("elf")
+        self.grove.mark_character_talked("fae")
+        self.grove.choose_task("break_gate_lock")
+
+        self.grove.begin_day(3)
+        self.grove.mark_character_talked("elf")
+        self.grove.mark_character_talked("fae")
+        self.grove.choose_task("retrieve_key")
+        self.assertIs(self.grove._background_image, self.grove._background_images["fae"])
 
     def test_talking_to_both_characters_unlocks_tasks_and_resets_each_day(self) -> None:
         self.grove.begin_day(2)
@@ -181,7 +223,7 @@ class GroveScreenTests(unittest.TestCase):
         self.grove.complete_task("repair_roof")
         self.assertIs(
             self.grove.current_house_sprite,
-            self.grove.sprites["broken_house"],
+            self.grove.sprites["house"],
         )
         self.grove.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e))
         self.grove.draw(pygame.Surface(self.grove.size))
@@ -218,19 +260,7 @@ class GroveScreenTests(unittest.TestCase):
         self.assertFalse(self.grove.sleep_confirmation_open)
         self.assertFalse(self.grove.consume_sleep_request())
 
-    def test_gate_has_visible_black_white_and_red_locks_next_to_fae(self) -> None:
-        center_x = self.grove.gate_sprite.get_width() // 2
-        scale_y = self.grove.gate_sprite.get_height() / self.grove.GATE_SPRITE_SIZE[1]
-        scale_x = self.grove.gate_sprite.get_width() / self.grove.GATE_SPRITE_SIZE[0]
-        lock_colors = ((16, 17, 20), (244, 244, 235), (196, 35, 42))
-        for index, color in enumerate(lock_colors):
-            source_y = (67, 108, 149)[index] + 4
-            point = (
-                center_x - round(7 * scale_x),
-                round(source_y * scale_y),
-            )
-            self.assertEqual(self.grove.gate_sprite.get_at(point)[:3], color)
-
+    def test_gate_hitbox_is_aligned_and_fae_stands_beside_it(self) -> None:
         fae_x, fae_y = self.grove.character_positions["Fae"]
         gate = self.grove.feature_rects["Gate"]
         self.assertGreater(fae_x, gate.right)
@@ -274,24 +304,18 @@ class GroveScreenTests(unittest.TestCase):
         self.assertEqual(self.grove.sprites["house"].get_size(), (150, 300))
         self.assertEqual(self.grove.sprites["broken_house"].get_size(), (150, 300))
 
-    def test_intact_house_changes_to_broken_art_after_roof_repair(self) -> None:
-        self.assertIs(self.grove.current_house_sprite, self.grove.sprites["house"])
+    def test_broken_house_changes_to_fixed_art_after_roof_repair(self) -> None:
+        self.assertIs(self.grove.current_house_sprite, self.grove.sprites["broken_house"])
         self.grove.begin_day(2)
         self.grove.mark_character_talked("elf")
         self.grove.mark_character_talked("fae")
         self.grove.choose_task("repair_roof")
         self.grove.complete_task("repair_roof")
 
-        self.assertIs(
-            self.grove.current_house_sprite,
-            self.grove.sprites["broken_house"],
-        )
+        self.assertIs(self.grove.current_house_sprite, self.grove.sprites["house"])
         self.grove.begin_day(3)
         self.grove.resize((1024, 768))
-        self.assertIs(
-            self.grove.current_house_sprite,
-            self.grove.sprites["broken_house"],
-        )
+        self.assertIs(self.grove.current_house_sprite, self.grove.sprites["house"])
 
 
 if __name__ == "__main__":
