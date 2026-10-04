@@ -17,7 +17,7 @@ import os
 import random
 import time
 from concurrent.futures import Future, ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
@@ -41,7 +41,6 @@ class GameContext:
     day: int
     location: str
 
-    # Exact task-state IDs from GroveScreen for the current day.
     completed_tasks: tuple[str, ...]
     failed_tasks: tuple[str, ...]
     chosen_tasks: tuple[str, ...]
